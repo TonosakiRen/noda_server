@@ -22,12 +22,21 @@
 
    <script src="/socket.io/socket.io.js"></script>
   <script>
-    // ✅ URLを空にすることで、自動的に接続先を見つけてくれます
     const socket = io();
-
     const btn = document.getElementById("sendBtn");
 
+    // 接続したときにメッセージを表示
+    socket.on("connect", () => {
+      console.log("✅ サーバーに接続しました！ ID:", socket.id);
+    });
+
+    // 接続が切れたときにメッセージを表示
+    socket.on("disconnect", () => {
+      console.log("❌ サーバーから切断されました。");
+    });
+
     btn.addEventListener("click", () => {
+      console.log("🖱️ ボタンがクリックされました！"); // ボタンが押されたか確認
       socket.emit("power", 1);
     });
   </script>
