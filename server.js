@@ -18,7 +18,6 @@ io.on("connection", (socket) => {
     io.emit("updatePower", totalPower);
   });
 
-  // ↓↓↓ このリセット機能を追加！ ↓↓↓
   socket.on("reset", () => {
     totalPower = 0;
     console.log("🔄 Power has been reset to 0");
