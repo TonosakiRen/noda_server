@@ -20,10 +20,10 @@
   <h1>元気を送ろう！⚡</h1>
   <button id="sendBtn">送る！</button>
 
-  <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+   <script src="/socket.io/socket.io.js"></script>
   <script>
-    // ✅ ここをあなたのIPアドレス＋ポート3000に変更！
-    const socket = io("http://192.168.107.142:3000");
+    // ✅ URLを空にすることで、自動的に接続先を見つけてくれます
+    const socket = io();
 
     const btn = document.getElementById("sendBtn");
 

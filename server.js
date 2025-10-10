@@ -6,6 +6,8 @@ const app = express();
 const httpServer = createServer(app);
 const io = new Server(httpServer, { cors: { origin: "*" } });
 
+app.use(express.static("public"));
+
 let totalPower = 0;
 
 io.on("connection", (socket) => {
