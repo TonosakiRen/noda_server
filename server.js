@@ -17,6 +17,13 @@ io.on("connection", (socket) => {
     console.log("💥 Power total:", totalPower);
     io.emit("updatePower", totalPower);
   });
+
+  // ↓↓↓ このリセット機能を追加！ ↓↓↓
+  socket.on("reset", () => {
+    totalPower = 0;
+    console.log("🔄 Power has been reset to 0");
+    io.emit("updatePower", totalPower); // 全員にリセットを通知
+  });
 });
 
 const PORT = process.env.PORT || 3000;

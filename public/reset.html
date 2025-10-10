@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Reset Control</title>
+</head>
+<body>
+    <h1>Counter Reset</h1>
+    <button id="resetBtn" style="color: red; padding: 20px;">RESET POWER TO 0</button>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            if (confirm('本当にカウンターを0にリセットしますか？')) {
+                socket.emit('reset');
+                alert('リセット命令を送信しました！');
+            }
+        });
+    </script>
+</body>
+</html>
