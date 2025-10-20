@@ -6,26 +6,53 @@ const app = express();
 const httpServer = createServer(app);
 const io = new Server(httpServer, { cors: { origin: "*" } });
 
-app.use(express.static("public"));
-
-let totalPower = 0;
+let players = {};
+let gameStarted = false;
 
 io.on("connection", (socket) => {
-  console.log("🟢 A user connected!");
-  socket.on("power", (count) => {
-    totalPower += count;
-    console.log("💥 Power total:", totalPower);
-    io.emit("updatePower", totalPower);
+  console.log("🟢 User connected:", socket.id);
+
+  // 名前を登録
+  socket.on("join", (name) => {
+    players[socket.id] = { name, score: 0 };
+    console.log(`👤 ${name} joined`);
   });
 
-  socket.on("reset", () => {
-    totalPower = 0;
-    console.log("🔄 Power has been reset to 0");
-    io.emit("updatePower", totalPower); // 全員にリセットを通知
+  // 連打イベント
+  socket.on("power", (count) => {
+    if (!gameStarted) return; // 開始していなければ無効
+    const player = players[socket.id];
+    if (player) {
+      player.score += count;
+      io.emit("updatePower", getLeaderboard());
+    }
+  });
+
+  // Unity側が「開始」ボタンを押した
+  socket.on("startGame", () => {
+    gameStarted = true;
+    console.log("🏁 Game started!");
+    io.emit("gameStarted");
+  });
+
+  // Unity側が「終了」ボタンを押した（ボス撃破）
+  socket.on("endGame", () => {
+    gameStarted = false;
+    console.log("⏹️ Game ended!");
+    io.emit("gameEnded", getLeaderboard());
+  });
+
+  socket.on("disconnect", () => {
+    delete players[socket.id];
   });
 });
 
-const PORT = process.env.PORT || 3000;
-httpServer.listen(PORT, () => {
-  console.log(`✅ Server is running on port ${PORT}`);
+function getLeaderboard() {
+  return Object.values(players)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 10);
+}
+
+httpServer.listen(3000, "0.0.0.0", () => {
+  console.log("✅ Server running on port 3000");
 });

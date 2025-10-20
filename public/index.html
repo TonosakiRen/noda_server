@@ -2,43 +2,42 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <title>元気玉を送る！</title>
-  <style>
-    body { text-align: center; font-family: sans-serif; margin-top: 80px; }
-    button {
-      font-size: 2rem;
-      padding: 30px 60px;
-      border-radius: 16px;
-      background: orange;
-      color: white;
-      border: none;
-      cursor: pointer;
-      touch-action: manipulation;
-    }
-  </style>
+  <title>元気を送る！</title>
+  <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
 </head>
 <body>
   <h1>元気を送ろう！⚡</h1>
-  <button id="sendBtn">送る！</button>
+  <input id="nameInput" placeholder="名前を入力" />
+  <button id="joinBtn">参加！</button>
+  <button id="sendBtn" disabled>送る！</button>
 
-   <script src="/socket.io/socket.io.js"></script>
   <script>
-    const socket = io();
-    const btn = document.getElementById("sendBtn");
+    const socket = io("https://nodaserver-production.up.railway.app");
+    const nameInput = document.getElementById("nameInput");
+    const joinBtn = document.getElementById("joinBtn");
+    const sendBtn = document.getElementById("sendBtn");
+    let canTap = false;
 
-    // 接続したときにメッセージを表示
-    socket.on("connect", () => {
-      console.log("✅ サーバーに接続しました！ ID:", socket.id);
+    joinBtn.onclick = () => {
+      socket.emit("join", nameInput.value || "名無し");
+      joinBtn.disabled = true;
+    };
+
+    sendBtn.onclick = () => {
+      if (canTap) socket.emit("power", 1);
+    };
+
+    socket.on("gameStarted", () => {
+      canTap = true;
+      sendBtn.disabled = false;
+      alert("🔥 開始！");
     });
 
-    // 接続が切れたときにメッセージを表示
-    socket.on("disconnect", () => {
-      console.log("❌ サーバーから切断されました。");
-    });
-
-    btn.addEventListener("click", () => {
-      console.log("🖱️ ボタンがクリックされました！"); // ボタンが押されたか確認
-      socket.emit("power", 1);
+    socket.on("gameEnded", (leaderboard) => {
+      canTap = false;
+      sendBtn.disabled = true;
+      alert("🏁 終了！結果を確認！");
+      console.table(leaderboard);
     });
   </script>
 </body>
