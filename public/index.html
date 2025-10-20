@@ -7,6 +7,7 @@
     <script src="/socket.io/socket.io.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
     <style>
+        /* CSSは変更ありません (省略) */
         body { font-family: sans-serif; text-align: center; background: #f0f0f0; }
         #joinScreen { display: block; padding-top: 50px; }
         #gameScreen { display: none; }
@@ -29,9 +30,6 @@
         #clickButton:active { background: #d32f2f; }
         #status { font-size: 24px; font-weight: bold; }
         #myScore { font-size: 20px; color: #555; }
-        /* ★ 修正: leaderboard関連を削除 (もしくは非表示) */
-        /* #leaderboard { list-style: none; padding: 0; } */
-        /* #leaderboard li { font-size: 18px; padding: 5px; } */
         #myFinalScore { font-size: 28px; color: #333; }
         #thanksMessage { font-size: 18px; color: #666; margin-top: 20px; }
     </style>
@@ -50,8 +48,7 @@
         <h2 id="myName"></h2>
         <h3 id="myScore">あなたのスコア: 0</h3>
         <button id="clickButton" disabled>PUSH!</button>
-        
-        </div>
+    </div>
 
     <div id="endScreen">
         <h1>ゲーム終了！</h1>
@@ -64,7 +61,7 @@
         // サーバーに接続
         const socket = io(); 
 
-        // 要素を取得
+        // 要素を取得 (変更なし)
         const joinScreen = document.getElementById("joinScreen");
         const gameScreen = document.getElementById("gameScreen");
         const endScreen = document.getElementById("endScreen");
@@ -74,8 +71,6 @@
         const statusText = document.getElementById("status");
         const myNameText = document.getElementById("myName");
         const myScoreText = document.getElementById("myScore");
-        // ★ 修正: leaderboardList の取得を削除
-        // const leaderboardList = document.getElementById("leaderboard");
         const myFinalScoreText = document.getElementById("myFinalScore");
 
         let myName = "";
@@ -90,7 +85,8 @@
             myNameText.innerText = `ようこそ、${myName} さん`;
         };
 
-        // 「エナジー弾」エフェクト (変更なし)
+        // ★★★ ここから修正 ★★★
+        // 「エナジー弾」エフェクトを表示する関数
         function sendEnergyBall(e) {
             const touch = e.touches ? e.touches[0] : e;
             if (!touch) return;
@@ -99,15 +95,20 @@
 
             confetti({
                 particleCount: 15,
-                angle: 270,
-                spread: 25,
-                origin: { x, y },
-                gravity: 0,
-                scalar: 2.5,
-                drift: 0,
-                disableForDecay: true, 
-                colors: ['#00FFFF', '#FFFFFF', '#87CEFA'],
-                shapes: ['circle', 'star'],
+                // ★ 修正: 270 (下) -> 90 (上) に変更
+                angle: 90,
+                spread: 30,         // 散開する角度 (少し広げる)
+                origin: { x, y },   // 発射元の座標 (クリック位置)
+                
+                gravity: 0,         // 重力ゼロ
+                scalar: 2.0,        // 速度
+                drift: 0,           // 横ブレなし
+                
+                disableForDecay: true, // 画面外で消える
+
+                // ★ 修正: 色を赤・黄・オレンジ系に変更
+                colors: ['#FF0000', '#FFA500', '#FFFF00', '#FF4500'], 
+                shapes: ['circle', 'star'], // 形 (円と星)
                 zIndex: 9999
             });
         }
@@ -128,11 +129,11 @@
             socket.emit("power", 1);
             sendEnergyBall(e);
         }, { passive: false });
+        // ★★★ ここまで修正 ★★★
 
 
-        // --- サーバーからの受信 ---
+        // --- サーバーからの受信 (変更なし) ---
 
-        // ゲーム開始 (変更なし)
         socket.on("gameStarted", () => {
             statusText.innerText = "START!!";
             clickButton.disabled = false;
@@ -140,14 +141,8 @@
             myScoreText.innerText = `あなたのスコア: 0`;
         });
 
-        // ★ 修正: リアルタイムのランキング更新処理を削除 (またはコメントアウト) ★
-        /*
-        socket.on("updateLeaderboard", (leaderboard) => {
-            updateLeaderboardUI(leaderboardList, leaderboard);
-        });
-        */
+        // (ランキング受信は削除済み)
 
-        // ゲーム終了 (変更なし)
         socket.on("gameEnded", (finalLeaderboard) => {
             gameScreen.style.display = "none";
             endScreen.style.display = "block";
@@ -155,21 +150,8 @@
             statusText.innerText = "終了！";
             myFinalScoreText.innerText = `あなたの最終スコア: ${myScore} 回`;
         });
-
-        // ★ 修正: ランキングUIを更新する共通関数を削除 (またはコメントアウト) ★
-        /*
-        function updateLeaderboardUI(listElement, leaderboard) {
-            listElement.innerHTML = ""; 
-            leaderboard.forEach((player, index) => {
-                const li = document.createElement("li");
-                li.innerText = `${index + 1}. ${player.name}: ${player.score} pt`;
-                if (player.name === myName) {
-                    li.style.fontWeight = "bold"; 
-                }
-                listElement.appendChild(li);
-            });
-        }
-        */
+        
+        // (ランキング更新関数は削除済み)
     </script>
 </body>
 </html>
