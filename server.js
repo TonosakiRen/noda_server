@@ -30,11 +30,12 @@ io.on("connection", (socket) => {
         console.log(`👤 ${name} joined`);
     });
 
+    // デバッグ用に power イベントのログを出力
     socket.on("power", (count) => {
-       // if (!gameStarted) return;
         const player = players[socket.id];
         if (player) {
             player.score += count;
+            console.log(`💥 Received power from ${player.name}: ${count} (Total: ${player.score})`);
             io.emit("updatePower", getLeaderboard());
         }
     });
@@ -52,7 +53,10 @@ io.on("connection", (socket) => {
     });
 
     socket.on("disconnect", () => {
-        delete players[socket.id];
+        if (players[socket.id]) {
+            console.log(`❌ ${players[socket.id].name} disconnected`);
+            delete players[socket.id];
+        }
     });
 });
 
