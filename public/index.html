@@ -3,11 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>連打ゲーム</title>
+    <title>元気玉を送ろう！</title>
     <script src="/socket.io/socket.io.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
     <style>
-        /* CSSスタイルは前回のものと同一です (省略) */
         body { font-family: sans-serif; text-align: center; background: #f0f0f0; }
         #joinScreen { display: block; padding-top: 50px; }
         #gameScreen { display: none; }
@@ -30,8 +29,9 @@
         #clickButton:active { background: #d32f2f; }
         #status { font-size: 24px; font-weight: bold; }
         #myScore { font-size: 20px; color: #555; }
-        #leaderboard { list-style: none; padding: 0; }
-        #leaderboard li { font-size: 18px; padding: 5px; }
+        /* ★ 修正: leaderboard関連を削除 (もしくは非表示) */
+        /* #leaderboard { list-style: none; padding: 0; } */
+        /* #leaderboard li { font-size: 18px; padding: 5px; } */
         #myFinalScore { font-size: 28px; color: #333; }
         #thanksMessage { font-size: 18px; color: #666; margin-top: 20px; }
     </style>
@@ -39,7 +39,7 @@
 <body>
 
     <div id="joinScreen">
-        <h1>連打ゲームに参加</h1>
+        <h1>元気玉を送ろう！</h1>
         <input type="text" id="nameInput" placeholder="名前を入力">
         <br>
         <button id="joinButton">参加する</button>
@@ -50,14 +50,13 @@
         <h2 id="myName"></h2>
         <h3 id="myScore">あなたのスコア: 0</h3>
         <button id="clickButton" disabled>PUSH!</button>
-        <h3>ランキング</h3>
-        <ol id="leaderboard"></ol>
-    </div>
+        
+        </div>
 
     <div id="endScreen">
         <h1>ゲーム終了！</h1>
         <h2 id="myFinalScore"></h2> 
-        <p id="thanksMessage">ご協力ありがとうございます。</p>
+        <p id="thanksMessage">ご協力ありがとうございました。</p>
         <button onclick="location.reload()">もう一度参加する</button>
     </div>
 
@@ -65,7 +64,7 @@
         // サーバーに接続
         const socket = io(); 
 
-        // 要素を取得 (変更なし)
+        // 要素を取得
         const joinScreen = document.getElementById("joinScreen");
         const gameScreen = document.getElementById("gameScreen");
         const endScreen = document.getElementById("endScreen");
@@ -75,7 +74,8 @@
         const statusText = document.getElementById("status");
         const myNameText = document.getElementById("myName");
         const myScoreText = document.getElementById("myScore");
-        const leaderboardList = document.getElementById("leaderboard");
+        // ★ 修正: leaderboardList の取得を削除
+        // const leaderboardList = document.getElementById("leaderboard");
         const myFinalScoreText = document.getElementById("myFinalScore");
 
         let myName = "";
@@ -90,38 +90,29 @@
             myNameText.innerText = `ようこそ、${myName} さん`;
         };
 
-        // ★★★ ここから修正 ★★★
-        // 「エナジー弾」エフェクトを表示する関数
+        // 「エナジー弾」エフェクト (変更なし)
         function sendEnergyBall(e) {
-            // イベント座標を取得
             const touch = e.touches ? e.touches[0] : e;
             if (!touch) return;
-
-            // 座標を画面全体の割合(0～1)に変換
             const x = touch.clientX / window.innerWidth;
             const y = touch.clientY / window.innerHeight;
 
-            // confettiライブラリを使って「上に送る」エフェクトを実行
             confetti({
-                particleCount: 15,  // 粒の数 (少なめ)
-                angle: 270,         // 発射角度 (真上)
-                spread: 25,         // 散開する角度 (狭く)
-                origin: { x, y },   // 発射元の座標 (クリック位置)
-                
-                gravity: 0,         // ★重力ゼロ (まっすぐ飛ぶ)
-                scalar: 2.5,        // ★速度 (速め)
-                drift: 0,           // 横ブレなし
-                
-                // ★画面外に出るまでパーティクルを消さない
+                particleCount: 15,
+                angle: 270,
+                spread: 25,
+                origin: { x, y },
+                gravity: 0,
+                scalar: 2.5,
+                drift: 0,
                 disableForDecay: true, 
-
-                colors: ['#00FFFF', '#FFFFFF', '#87CEFA'], // エナジー色 (シアン, 白, 水色)
-                shapes: ['circle', 'star'], // 形 (円と星)
-                zIndex: 9999        // ボタンより手前に表示
+                colors: ['#00FFFF', '#FFFFFF', '#87CEFA'],
+                shapes: ['circle', 'star'],
+                zIndex: 9999
             });
         }
 
-        // 連打ボタン（クリック）
+        // 連打ボタン（クリック） (変更なし)
         clickButton.addEventListener("click", (e) => {
             myScore++;
             myScoreText.innerText = `あなたのスコア: ${myScore}`;
@@ -129,7 +120,7 @@
             sendEnergyBall(e);
         });
         
-        // スマホの高速タップ対応（タッチ）
+        // スマホの高速タップ対応（タッチ） (変更なし)
         clickButton.addEventListener("touchstart", (e) => {
             e.preventDefault(); 
             myScore++;
@@ -137,12 +128,11 @@
             socket.emit("power", 1);
             sendEnergyBall(e);
         }, { passive: false });
-        // ★★★ ここまで修正 ★★★
 
 
-        // --- サーバーからの受信 (変更なし) ---
+        // --- サーバーからの受信 ---
 
-        // ゲーム開始
+        // ゲーム開始 (変更なし)
         socket.on("gameStarted", () => {
             statusText.innerText = "START!!";
             clickButton.disabled = false;
@@ -150,12 +140,14 @@
             myScoreText.innerText = `あなたのスコア: 0`;
         });
 
-        // リアルタイムのランキング更新
+        // ★ 修正: リアルタイムのランキング更新処理を削除 (またはコメントアウト) ★
+        /*
         socket.on("updateLeaderboard", (leaderboard) => {
             updateLeaderboardUI(leaderboardList, leaderboard);
         });
+        */
 
-        // ゲーム終了
+        // ゲーム終了 (変更なし)
         socket.on("gameEnded", (finalLeaderboard) => {
             gameScreen.style.display = "none";
             endScreen.style.display = "block";
@@ -164,7 +156,8 @@
             myFinalScoreText.innerText = `あなたの最終スコア: ${myScore} 回`;
         });
 
-        // ランキングUIを更新する共通関数 (変更なし)
+        // ★ 修正: ランキングUIを更新する共通関数を削除 (またはコメントアウト) ★
+        /*
         function updateLeaderboardUI(listElement, leaderboard) {
             listElement.innerHTML = ""; 
             leaderboard.forEach((player, index) => {
@@ -176,6 +169,7 @@
                 listElement.appendChild(li);
             });
         }
+        */
     </script>
 </body>
 </html>
