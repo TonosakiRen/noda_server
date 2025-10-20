@@ -86,48 +86,49 @@
         };
 
         // ★★★ ここから修正 ★★★
-        // 「エナジー弾」エフェクトを表示する関数
-        function sendEnergyBall(e) {
+        // 「360度爆発」エフェクトを表示する関数
+        function showBurst(e) {
             const touch = e.touches ? e.touches[0] : e;
             if (!touch) return;
             const x = touch.clientX / window.innerWidth;
             const y = touch.clientY / window.innerHeight;
 
             confetti({
-                particleCount: 15,
-                // ★ 修正: 270 (下) -> 90 (上) に変更
-                angle: 90,
-                spread: 30,         // 散開する角度 (少し広げる)
-                origin: { x, y },   // 発射元の座標 (クリック位置)
+                particleCount: 50,  // 量を少し増やす
+                // ★ 修正: angle: 90 を削除
+                // ★ 修正: spread を 360 に変更
+                spread: 360,
+                origin: { x, y },   // 発射元の座標
                 
-                gravity: 0,         // 重力ゼロ
-                scalar: 2.0,        // 速度
-                drift: 0,           // 横ブレなし
+                // ★ 修正: 少し重力をかけて「パッ」と散るように
+                gravity: 0.5,
+                scalar: 1.0,        // 速度
                 
-                disableForDecay: true, // 画面外で消える
+                decay: 0.92,        // 少しだけ長く消えるように
 
-                // ★ 修正: 色を赤・黄・オレンジ系に変更
                 colors: ['#FF0000', '#FFA500', '#FFFF00', '#FF4500'], 
-                shapes: ['circle', 'star'], // 形 (円と星)
+                shapes: ['circle', 'star'],
                 zIndex: 9999
             });
         }
 
-        // 連打ボタン（クリック） (変更なし)
+        // 連打ボタン（クリック）
         clickButton.addEventListener("click", (e) => {
             myScore++;
             myScoreText.innerText = `あなたのスコア: ${myScore}`;
             socket.emit("power", 1);
-            sendEnergyBall(e);
+            // ★ 修正: 呼び出す関数を変更
+            showBurst(e);
         });
         
-        // スマホの高速タップ対応（タッチ） (変更なし)
+        // スマホの高速タップ対応（タッチ）
         clickButton.addEventListener("touchstart", (e) => {
             e.preventDefault(); 
             myScore++;
             myScoreText.innerText = `あなたのスコア: ${myScore}`;
             socket.emit("power", 1);
-            sendEnergyBall(e);
+            // ★ 修正: 呼び出す関数を変更
+            showBurst(e);
         }, { passive: false });
         // ★★★ ここまで修正 ★★★
 
@@ -141,8 +142,6 @@
             myScoreText.innerText = `あなたのスコア: 0`;
         });
 
-        // (ランキング受信は削除済み)
-
         socket.on("gameEnded", (finalLeaderboard) => {
             gameScreen.style.display = "none";
             endScreen.style.display = "block";
@@ -151,7 +150,6 @@
             myFinalScoreText.innerText = `あなたの最終スコア: ${myScore} 回`;
         });
         
-        // (ランキング更新関数は削除済み)
     </script>
 </body>
 </html>
