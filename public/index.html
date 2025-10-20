@@ -7,7 +7,6 @@
     <script src="/socket.io/socket.io.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
     <style>
-        /* CSSは変更ありません (省略) */
         body { font-family: sans-serif; text-align: center; background: #f0f0f0; }
         #joinScreen { display: block; padding-top: 50px; }
         #gameScreen { display: none; }
@@ -19,7 +18,7 @@
             width: 90vw;
             height: 60vh;
             margin: 20px auto;
-            background: #ff4136;
+            background: #0074D9; /* ★★★ ボタンの色も青系に変更 ★★★ */
             color: white;
             border: none;
             border-radius: 20px;
@@ -27,7 +26,7 @@
             -webkit-user-select: none;
             -webkit-tap-highlight-color: transparent;
         }
-        #clickButton:active { background: #d32f2f; }
+        #clickButton:active { background: #0056a2; }
         #status { font-size: 24px; font-weight: bold; }
         #myScore { font-size: 20px; color: #555; }
         #myFinalScore { font-size: 28px; color: #333; }
@@ -38,7 +37,7 @@
 
     <div id="joinScreen">
         <h1>元気玉を送ろう！</h1>
-        <input type="text" id="nameInput" placeholder="名前を入力">
+        <input type="text" id="nameInput" placeholder="名前を入力" maxlength="18">
         <br>
         <button id="joinButton">参加する</button>
     </div>
@@ -54,14 +53,14 @@
         <h1>ゲーム終了！</h1>
         <h2 id="myFinalScore"></h2> 
         <p id="thanksMessage">ご協力ありがとうございました。</p>
-        <button onclick="location.reload()">もう一度参加する</button>
+        
     </div>
 
     <script>
         // サーバーに接続
         const socket = io(); 
 
-        // 要素を取得 (変更なし)
+        // 要素を取得
         const joinScreen = document.getElementById("joinScreen");
         const gameScreen = document.getElementById("gameScreen");
         const endScreen = document.getElementById("endScreen");
@@ -76,17 +75,30 @@
         let myName = "";
         let myScore = 0;
 
-        // 参加ボタン (変更なし)
+        // --- ★★★ 修正: 参加ボタンの処理 ★★★ ---
+        // 参加時にサーバーにゲーム状況を問い合わせ、進行中なら即座にゲームを開始します
         joinButton.onclick = () => {
             myName = nameInput.value || "名無し";
-            socket.emit("join", myName);
-            joinScreen.style.display = "none";
-            gameScreen.style.display = "block";
-            myNameText.innerText = `ようこそ、${myName} さん`;
+            
+            // emitにコールバックを追加し、サーバーからの即時応答(isGameActive)を受け取る
+            socket.emit("join", myName, (isGameActive) => {
+                // サーバーからの応答を受け取ってから画面を切り替える
+                joinScreen.style.display = "none";
+                gameScreen.style.display = "block";
+                myNameText.innerText = `ようこそ、${myName} さん`;
+
+                // もしサーバー側でゲームが進行中なら、即座にゲームを開始状態にする
+                if (isGameActive) {
+                    console.log("ゲームに途中参加します。");
+                    statusText.innerText = "START!!";
+                    clickButton.disabled = false;
+                    myScore = 0; 
+                    myScoreText.innerText = `あなたのスコア: 0`;
+                }
+            });
         };
 
-        // ★★★ ここから修正 ★★★
-        // 「360度爆発」エフェクトを表示する関数
+        // --- ★★★ 修正: パーティクルの色 ★★★ ---
         function showBurst(e) {
             const touch = e.touches ? e.touches[0] : e;
             if (!touch) return;
@@ -94,19 +106,13 @@
             const y = touch.clientY / window.innerHeight;
 
             confetti({
-                particleCount: 50,  // 量を少し増やす
-                // ★ 修正: angle: 90 を削除
-                // ★ 修正: spread を 360 に変更
+                particleCount: 50,
                 spread: 360,
-                origin: { x, y },   // 発射元の座標
-                
-                // ★ 修正: 少し重力をかけて「パッ」と散るように
+                origin: { x, y },
                 gravity: 0.5,
-                scalar: 1.0,        // 速度
-                
-                decay: 0.92,        // 少しだけ長く消えるように
-
-                colors: ['#FF0000', '#FFA500', '#FFFF00', '#FF4500'], 
+                scalar: 1.0,
+                decay: 0.92,
+                colors: ['#00BFFF', '#1E90FF', '#ADD8E6', '#FFFFFF'], // 青系の色に変更
                 shapes: ['circle', 'star'],
                 zIndex: 9999
             });
@@ -117,7 +123,6 @@
             myScore++;
             myScoreText.innerText = `あなたのスコア: ${myScore}`;
             socket.emit("power", 1);
-            // ★ 修正: 呼び出す関数を変更
             showBurst(e);
         });
         
@@ -127,21 +132,22 @@
             myScore++;
             myScoreText.innerText = `あなたのスコア: ${myScore}`;
             socket.emit("power", 1);
-            // ★ 修正: 呼び出す関数を変更
             showBurst(e);
         }, { passive: false });
-        // ★★★ ここまで修正 ★★★
 
 
-        // --- サーバーからの受信 (変更なし) ---
+        // --- サーバーからの受信 ---
 
+        // 通常のゲーム開始
         socket.on("gameStarted", () => {
+            console.log("サーバーから開始信号を受信しました。");
             statusText.innerText = "START!!";
             clickButton.disabled = false;
             myScore = 0; 
             myScoreText.innerText = `あなたのスコア: 0`;
         });
 
+        // ゲーム終了
         socket.on("gameEnded", (finalLeaderboard) => {
             gameScreen.style.display = "none";
             endScreen.style.display = "block";
