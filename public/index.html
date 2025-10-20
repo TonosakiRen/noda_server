@@ -1,47 +1,145 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8" />
-  <title>元気を送る！</title>
-  <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>連打ゲーム</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        body { font-family: sans-serif; text-align: center; background: #f0f0f0; }
+        #joinScreen { display: block; padding-top: 50px; }
+        #gameScreen { display: none; }
+        #endScreen { display: none; }
+        #nameInput { font-size: 24px; padding: 10px; width: 80%; }
+        #joinButton { font-size: 24px; padding: 15px 30px; margin-top: 20px; }
+        #clickButton {
+            font-size: 40px;
+            width: 90vw;
+            height: 60vh;
+            margin: 20px auto;
+            background: #ff4136;
+            color: white;
+            border: none;
+            border-radius: 20px;
+            user-select: none; /* ボタンのテキスト選択を防ぐ */
+            -webkit-user-select: none; /* Safari用 */
+            -webkit-tap-highlight-color: transparent; /* タップ時のハイライトを消す */
+        }
+        #clickButton:active { background: #d32f2f; }
+        #status { font-size: 24px; font-weight: bold; }
+        #myScore { font-size: 20px; color: #555; }
+        #leaderboard { list-style: none; padding: 0; }
+        #leaderboard li { font-size: 18px; padding: 5px; }
+    </style>
 </head>
 <body>
-  <h1>元気を送ろう！⚡</h1>
-  <input id="nameInput" placeholder="名前を入力" />
-  <button id="joinBtn">参加！</button>
-  <button id="sendBtn" disabled>送る！</button>
 
-  <script>
-    const socket = io("https://nodaserver-production.up.railway.app");
-    const nameInput = document.getElementById("nameInput");
-    const joinBtn = document.getElementById("joinBtn");
-    const sendBtn = document.getElementById("sendBtn");
-    let canTap = false;
+    <div id="joinScreen">
+        <h1>連打ゲームに参加</h1>
+        <input type="text" id="nameInput" placeholder="名前を入力">
+        <br>
+        <button id="joinButton">参加する</button>
+    </div>
 
-    joinBtn.onclick = () => {
-      socket.emit("join", nameInput.value || "名無し");
-      joinBtn.disabled = true;
-    };
+    <div id="gameScreen">
+        <h1 id="status">待機中... (Unityからの開始待ち)</h1>
+        <h2 id="myName"></h2>
+        <h3 id="myScore">あなたのスコア: 0</h3>
+        <button id="clickButton" disabled>PUSH!</button>
+        <h3>ランキング</h3>
+        <ol id="leaderboard"></ol>
+    </div>
 
-    sendBtn.onclick = () => {
-       if (canTap) {
-        console.log("Clicked!"); // <- ここでログが出るか確認
-        socket.emit("power", 1);
-      }
-    };
+    <div id="endScreen">
+        <h1>ゲーム終了！</h1>
+        <h3>最終ランキング</h3>
+        <ol id="finalLeaderboard"></ol>
+        <button onclick="location.reload()">もう一度参加する</button>
+    </div>
 
-    socket.on("gameStarted", () => {
-      canTap = true;
-      sendBtn.disabled = false;
-      alert("🔥 開始！");
-    });
+    <script>
+        // サーバーに接続 (本番環境では 'https://...' のように変更)
+        const socket = io(); 
 
-    socket.on("gameEnded", (leaderboard) => {
-      canTap = false;
-      sendBtn.disabled = true;
-      alert("🏁 終了！結果を確認！");
-      console.table(leaderboard);
-    });
-  </script>
+        const joinScreen = document.getElementById("joinScreen");
+        const gameScreen = document.getElementById("gameScreen");
+        const endScreen = document.getElementById("endScreen");
+
+        const nameInput = document.getElementById("nameInput");
+        const joinButton = document.getElementById("joinButton");
+        const clickButton = document.getElementById("clickButton");
+
+        const statusText = document.getElementById("status");
+        const myNameText = document.getElementById("myName");
+        const myScoreText = document.getElementById("myScore");
+        const leaderboardList = document.getElementById("leaderboard");
+        const finalLeaderboardList = document.getElementById("finalLeaderboard");
+
+        let myName = "";
+        let myScore = 0;
+
+        // 参加ボタンが押されたら
+        joinButton.onclick = () => {
+            myName = nameInput.value || "名無し";
+            socket.emit("join", myName);
+
+            joinScreen.style.display = "none";
+            gameScreen.style.display = "block";
+            myNameText.innerText = `ようこそ、${myName} さん`;
+        };
+
+        // 連打ボタン（タッチ含む）
+        clickButton.addEventListener("click", () => {
+            myScore++;
+            myScoreText.innerText = `あなたのスコア: ${myScore}`;
+            // サーバーに1カウント送信
+            socket.emit("power", 1);
+        });
+        // スマホの高速タップ対応 (touchstartでも発火)
+        clickButton.addEventListener("touchstart", (e) => {
+            e.preventDefault(); // 画面のズームやスクロールを防ぐ
+            myScore++;
+            myScoreText.innerText = `あなたのスコア: ${myScore}`;
+            socket.emit("power", 1);
+        }, { passive: false });
+
+
+        // --- サーバーからの受信 ---
+
+        // Unityによってゲームが開始された
+        socket.on("gameStarted", () => {
+            statusText.innerText = "START!!";
+            clickButton.disabled = false;
+            myScore = 0; // スコアリセット
+            myScoreText.innerText = `あなたのスコア: 0`;
+        });
+
+        // リアルタイムのランキング更新
+        socket.on("updateLeaderboard", (leaderboard) => {
+            updateLeaderboardUI(leaderboardList, leaderboard);
+        });
+
+        // Unityによってゲームが終了した
+        socket.on("gameEnded", (finalLeaderboard) => {
+            gameScreen.style.display = "none";
+            endScreen.style.display = "block";
+            clickButton.disabled = true;
+            statusText.innerText = "終了！";
+            updateLeaderboardUI(finalLeaderboardList, finalLeaderboard);
+        });
+
+        // ランキングUIを更新する共通関数
+        function updateLeaderboardUI(listElement, leaderboard) {
+            listElement.innerHTML = ""; // いったん空にする
+            leaderboard.forEach((player, index) => {
+                const li = document.createElement("li");
+                li.innerText = `${index + 1}. ${player.name}: ${player.score} pt`;
+                if (player.name === myName) {
+                    li.style.fontWeight = "bold"; // 自分の名前を太字に
+                }
+                listElement.appendChild(li);
+            });
+        }
+    </script>
 </body>
 </html>
