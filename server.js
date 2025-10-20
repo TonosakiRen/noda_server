@@ -31,7 +31,7 @@ io.on("connection", (socket) => {
     });
 
     socket.on("power", (count) => {
-        if (!gameStarted) return;
+       // if (!gameStarted) return;
         const player = players[socket.id];
         if (player) {
             player.score += count;

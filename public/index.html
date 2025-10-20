@@ -24,7 +24,10 @@
     };
 
     sendBtn.onclick = () => {
-      if (canTap) socket.emit("power", 1);
+       if (canTap) {
+        console.log("Clicked!"); // <- ここでログが出るか確認
+        socket.emit("power", 1);
+      }
     };
 
     socket.on("gameStarted", () => {
