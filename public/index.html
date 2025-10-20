@@ -5,11 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>連打ゲーム</title>
     <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
     <style>
         body { font-family: sans-serif; text-align: center; background: #f0f0f0; }
         #joinScreen { display: block; padding-top: 50px; }
         #gameScreen { display: none; }
-        #endScreen { display: none; }
+        #endScreen { display: none; padding-top: 50px; } /* 終了画面に少し余白を追加 */
         #nameInput { font-size: 24px; padding: 10px; width: 80%; }
         #joinButton { font-size: 24px; padding: 15px 30px; margin-top: 20px; }
         #clickButton {
@@ -30,6 +31,11 @@
         #myScore { font-size: 20px; color: #555; }
         #leaderboard { list-style: none; padding: 0; }
         #leaderboard li { font-size: 18px; padding: 5px; }
+
+        /* ★★★ 追加: 終了画面用のスタイル ★★★ */
+        #myFinalScore { font-size: 28px; color: #333; }
+        #thanksMessage { font-size: 18px; color: #666; margin-top: 20px; }
+
     </style>
 </head>
 <body>
@@ -52,15 +58,17 @@
 
     <div id="endScreen">
         <h1>ゲーム終了！</h1>
-        <h3>最終ランキング</h3>
-        <ol id="finalLeaderboard"></ol>
+        <h2 id="myFinalScore"></h2> 
+        <p id="thanksMessage">ご協力ありがとうございます。</p>
+        
         <button onclick="location.reload()">もう一度参加する</button>
     </div>
 
     <script>
-        // サーバーに接続 (本番環境では 'https://...' のように変更)
+        // サーバーに接続
         const socket = io(); 
 
+        // 要素を取得
         const joinScreen = document.getElementById("joinScreen");
         const gameScreen = document.getElementById("gameScreen");
         const endScreen = document.getElementById("endScreen");
@@ -73,12 +81,14 @@
         const myNameText = document.getElementById("myName");
         const myScoreText = document.getElementById("myScore");
         const leaderboardList = document.getElementById("leaderboard");
-        const finalLeaderboardList = document.getElementById("finalLeaderboard");
+
+        // ★★★ 修正: finalLeaderboardListの代わりにmyFinalScoreTextを取得 ★★★
+        const myFinalScoreText = document.getElementById("myFinalScore");
 
         let myName = "";
         let myScore = 0;
 
-        // 参加ボタンが押されたら
+        // 参加ボタン (変更なし)
         joinButton.onclick = () => {
             myName = nameInput.value || "名無し";
             socket.emit("join", myName);
@@ -88,25 +98,50 @@
             myNameText.innerText = `ようこそ、${myName} さん`;
         };
 
-        // 連打ボタン（タッチ含む）
-        clickButton.addEventListener("click", () => {
+        // ★★★ 追加: パーティクルを表示する関数 ★★★
+        function showConfetti(e) {
+            // clickイベント(e)かtouchstartイベント(e.touches[0])かを判定
+            const touch = e.touches ? e.touches[0] : e;
+            if (!touch) return; // 座標が取れなければ何もしない
+
+            // 座標を画面全体の割合(0～1)に変換
+            const x = touch.clientX / window.innerWidth;
+            const y = touch.clientY / window.innerHeight;
+
+            // パーティクルを発射
+            confetti({
+                particleCount: 50, // 量 (少なめ)
+                spread: 60,        // 飛び散る角度
+                origin: { x, y },  // 発射元の座標
+                zIndex: 9999       // ボタンより手前に表示
+            });
+        }
+
+        // 連打ボタン（クリック）
+        clickButton.addEventListener("click", (e) => {
             myScore++;
             myScoreText.innerText = `あなたのスコア: ${myScore}`;
-            // サーバーに1カウント送信
             socket.emit("power", 1);
+            
+            // ★★★ 追加: パーティクル実行 ★★★
+            showConfetti(e);
         });
-        // スマホの高速タップ対応 (touchstartでも発火)
+        
+        // スマホの高速タップ対応（タッチ）
         clickButton.addEventListener("touchstart", (e) => {
-            e.preventDefault(); // 画面のズームやスクロールを防ぐ
+            e.preventDefault(); // 画面のズームを防ぐ
             myScore++;
             myScoreText.innerText = `あなたのスコア: ${myScore}`;
             socket.emit("power", 1);
+
+            // ★★★ 追加: パーティクル実行 ★★★
+            showConfetti(e);
         }, { passive: false });
 
 
         // --- サーバーからの受信 ---
 
-        // Unityによってゲームが開始された
+        // ゲーム開始 (変更なし)
         socket.on("gameStarted", () => {
             statusText.innerText = "START!!";
             clickButton.disabled = false;
@@ -114,21 +149,26 @@
             myScoreText.innerText = `あなたのスコア: 0`;
         });
 
-        // リアルタイムのランキング更新
+        // リアルタイムのランキング更新 (変更なし)
         socket.on("updateLeaderboard", (leaderboard) => {
             updateLeaderboardUI(leaderboardList, leaderboard);
         });
 
-        // Unityによってゲームが終了した
+        // ★★★ 修正: ゲーム終了時 ★★★
         socket.on("gameEnded", (finalLeaderboard) => {
             gameScreen.style.display = "none";
             endScreen.style.display = "block";
             clickButton.disabled = true;
             statusText.innerText = "終了！";
-            updateLeaderboardUI(finalLeaderboardList, finalLeaderboard);
+            
+            // ランキング表示の代わりに、自分の最終スコアを表示
+            myFinalScoreText.innerText = `あなたの最終スコア: ${myScore} 回`;
+            
+            // 以前のランキング表示処理は削除
+            // updateLeaderboardUI(finalLeaderboardList, finalLeaderboard); 
         });
 
-        // ランキングUIを更新する共通関数
+        // ランキングUIを更新する共通関数 (ゲーム中のランキングで使うので残します)
         function updateLeaderboardUI(listElement, leaderboard) {
             listElement.innerHTML = ""; // いったん空にする
             leaderboard.forEach((player, index) => {

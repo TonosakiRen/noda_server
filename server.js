@@ -22,7 +22,6 @@ app.get("/", (req, res) => {
 let players = {};
 let gameStarted = false;
 
-// ★★★ 追加 ★★★
 // 全プレイヤーの合計スコアを計算する
 function getTotalPower() {
     // プレイヤーオブジェクトの配列を取得し、各playerのscoreを合計する
