@@ -91,7 +91,7 @@
         };
 
         // ★★★ ここから修正 ★★★
-        // 「元気玉」エフェクトを表示する関数
+        // 「エナジー弾」エフェクトを表示する関数
         function sendEnergyBall(e) {
             // イベント座標を取得
             const touch = e.touches ? e.touches[0] : e;
@@ -103,15 +103,20 @@
 
             // confettiライブラリを使って「上に送る」エフェクトを実行
             confetti({
-                particleCount: 20,  // 粒の数
-                spread: 30,         // 散開する角度 (狭め)
-                angle: 270,         // 発射角度 (270度 = 真上)
+                particleCount: 15,  // 粒の数 (少なめ)
+                angle: 270,         // 発射角度 (真上)
+                spread: 25,         // 散開する角度 (狭く)
                 origin: { x, y },   // 発射元の座標 (クリック位置)
-                gravity: -1,        // 重力 (マイナスで強く上に昇る)
+                
+                gravity: 0,         // ★重力ゼロ (まっすぐ飛ぶ)
+                scalar: 2.5,        // ★速度 (速め)
                 drift: 0,           // 横ブレなし
-                scalar: 1,          // 飛距離（勢い）
-                colors: ['#FFFFFF', '#B0E0E6', '#87CEFA'], // 色 (白、水色系)
-                shapes: ['circle'], // 形 (円のみ)
+                
+                // ★画面外に出るまでパーティクルを消さない
+                disableForDecay: true, 
+
+                colors: ['#00FFFF', '#FFFFFF', '#87CEFA'], // エナジー色 (シアン, 白, 水色)
+                shapes: ['circle', 'star'], // 形 (円と星)
                 zIndex: 9999        // ボタンより手前に表示
             });
         }
@@ -121,8 +126,6 @@
             myScore++;
             myScoreText.innerText = `あなたのスコア: ${myScore}`;
             socket.emit("power", 1);
-            
-            // ★★★ 修正: 元気玉エフェクト実行 ★★★
             sendEnergyBall(e);
         });
         
@@ -132,8 +135,6 @@
             myScore++;
             myScoreText.innerText = `あなたのスコア: ${myScore}`;
             socket.emit("power", 1);
-
-            // ★★★ 修正: 元気玉エフェクト実行 ★★★
             sendEnergyBall(e);
         }, { passive: false });
         // ★★★ ここまで修正 ★★★
