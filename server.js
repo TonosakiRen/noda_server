@@ -26,9 +26,16 @@ function getTotalPower() {
 }
 
 function getLeaderboard() {
-    return Object.values(players)
-        .sort((a, b) => b.score - a.score)
-        .slice(0, 10);
+  return Object.values(players)
+    .sort((a, b) => b.score - a.score) // スコア順にソート
+    .slice(0, 10) // 上位10件に絞る
+    .map(player => { // 
+      // C#側が受け取る形式にマッピングする
+      return {
+        name: player.displayName, // 
+        score: player.score
+      };
+    });
 }
 
 io.on("connection", (socket) => {
