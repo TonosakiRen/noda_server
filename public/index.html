@@ -31,6 +31,17 @@
         #myScore { font-size: 20px; color: #555; }
         #myFinalScore { font-size: 28px; color: #333; }
         #thanksMessage { font-size: 18px; color: #666; margin-top: 20px; }
+        
+        /* --- ✅ 追加したスタイル --- */
+        #stageQuestion {
+            margin-top: 25px;
+            padding: 10px;
+            font-size: 16px;
+        }
+        #stageQuestion label {
+            margin: 0 10px;
+            font-size: 18px;
+        }
     </style>
 </head>
 <body>
@@ -38,6 +49,14 @@
     <div id="joinScreen">
         <h1>元気玉を送ろう！</h1>
         <input type="text" id="nameInput" placeholder="名前を入力" maxlength="18">
+        
+        <div id="stageQuestion">
+            <p>クリック数が上位だった場合、<br>壇上に上がっていただけますか？</p>
+            <label><input type="radio" name="stage" value="yes" checked> はい</label>
+            <label><input type="radio" name="stage" value="no"> いいえ</label>
+            <p style="font-size: 12px; color: #666;">（「いいえ」の場合、ランキングには掲載されません）</p>
+        </div>
+        
         <br>
         <button id="joinButton">参加する</button>
     </div>
@@ -77,10 +96,25 @@
 
        // 参加時
         joinButton.onclick = () => {
-            const enteredName = nameInput.value || "名無し";
+            // ✅ 名前のトリムと空欄チェック
+            const enteredName = nameInput.value.trim();
+            
+            if (enteredName === "") {
+                alert("名前を入力してください。");
+                return; // ここで処理を中断
+            }
 
-         // サーバーに参加要求を出し、displayNameを受け取る
-            socket.emit("join", enteredName, ({ isGameActive, displayName }) => {
+            // ✅ 壇上の選択を取得
+            const stagePreference = document.querySelector('input[name="stage"]:checked').value;
+            const canBeOnStage = (stagePreference === "yes");
+
+            // ✅ サーバーに参加要求を出す（名前と壇上の可否をオブジェクトで送信）
+            const joinData = {
+                name: enteredName,
+                canBeOnStage: canBeOnStage
+            };
+
+            socket.emit("join", joinData, ({ isGameActive, displayName }) => {
                 myName = displayName; // ✅ サーバーが生成した「野田軍〇番隊隊長 名前」を使う
 
                 joinScreen.style.display = "none";
