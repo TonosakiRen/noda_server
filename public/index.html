@@ -75,7 +75,7 @@
         
     </div>
 
-    <script>
+  <script>
         // サーバーに接続
         const socket = io(); 
 
@@ -90,13 +90,50 @@
         const myNameText = document.getElementById("myName");
         const myScoreText = document.getElementById("myScore");
         const myFinalScoreText = document.getElementById("myFinalScore");
-
+        
+        // ✅ 警告メッセージの要素も取得 (もしあれば)
+        // const warningMessage = document.getElementById("warningMessage"); 
+        
         let myName = "";
         let myScore = 0;
 
-       // 参加時
+        // --- ✅ 自動再接続処理 ---
+        // ページが読み込まれた時に、保存されたデータで自動参加を試みる
+        function tryAutoJoin() {
+            const savedDataString = localStorage.getItem("playerData");
+
+            // 保存されたデータがあるか？
+            if (savedDataString) {
+                console.log("保存されたデータを検知。自動再接続します。");
+                const savedData = JSON.parse(savedDataString);
+
+                // 参加画面を非表示にする
+                joinScreen.style.display = "none";
+
+                // 保存されたデータ（名前と壇上設定）でサーバーに接続
+                // (joinButton.onclick とほぼ同じ処理)
+                socket.emit("join", savedData, ({ isGameActive, displayName }) => {
+                    myName = displayName; 
+
+                    // ゲーム画面を表示
+                    gameScreen.style.display = "block";
+                    myNameText.innerText = `ようこそ、${myName} さん`;
+
+                    if (isGameActive) {
+                        console.log("ゲームに途中参加します。");
+                        statusText.innerText = "START!!";
+                        clickButton.disabled = false;
+                        myScore = 0; 
+                        myScoreText.innerText = `あなたのスコア: 0`;
+                    }
+                    // (ゲームがまだ始まっていない場合は、'gameStarted' イベントを待つ)
+                });
+            }
+        }
+        
+        // --- ✅ 参加ボタンの処理 (LocalStorageへの保存を追加) ---
         joinButton.onclick = () => {
-            // ✅ 名前のトリムと空欄チェック
+            // 名前のトリムと空欄チェック
             const enteredName = nameInput.value.trim();
             
             if (enteredName === "") {
@@ -104,18 +141,22 @@
                 return; // ここで処理を中断
             }
 
-            // ✅ 壇上の選択を取得
+            // 壇上の選択を取得
             const stagePreference = document.querySelector('input[name="stage"]:checked').value;
             const canBeOnStage = (stagePreference === "yes");
 
-            // ✅ サーバーに参加要求を出す（名前と壇上の可否をオブジェクトで送信）
+            // サーバーに送るデータを作成
             const joinData = {
                 name: enteredName,
                 canBeOnStage: canBeOnStage
             };
+            
+            // ✅ データをLocalStorageに保存 (JSON文字列として保存)
+            localStorage.setItem("playerData", JSON.stringify(joinData));
 
+            // サーバーに参加要求を出す
             socket.emit("join", joinData, ({ isGameActive, displayName }) => {
-                myName = displayName; // ✅ サーバーが生成した「野田軍〇番隊隊長 名前」を使う
+                myName = displayName; 
 
                 joinScreen.style.display = "none";
                 gameScreen.style.display = "block";
@@ -131,6 +172,7 @@
             });
         };
 
+        // --- (紙吹雪の showBurst 関数は変更なし) ---
         function showBurst(e) {
             const touch = e.touches ? e.touches[0] : e;
             if (!touch) return;
@@ -150,7 +192,7 @@
             });
         }
 
-        // 連打ボタン（クリック）
+        // --- (ボタンのイベントリスナーは変更なし) ---
         clickButton.addEventListener("click", (e) => {
             myScore++;
             myScoreText.innerText = `あなたのスコア: ${myScore}`;
@@ -158,7 +200,6 @@
             showBurst(e);
         });
         
-        // スマホの高速タップ対応（タッチ）
         clickButton.addEventListener("touchstart", (e) => {
             e.preventDefault(); 
             myScore++;
@@ -168,9 +209,7 @@
         }, { passive: false });
 
 
-        // --- サーバーからの受信 ---
-
-        // 通常のゲーム開始
+        // --- (サーバーからの受信イベントは変更なし) ---
         socket.on("gameStarted", () => {
             console.log("サーバーから開始信号を受信しました。");
             statusText.innerText = "START!!";
@@ -179,14 +218,21 @@
             myScoreText.innerText = `あなたのスコア: 0`;
         });
 
-        // ゲーム終了
         socket.on("gameEnded", (finalLeaderboard) => {
             gameScreen.style.display = "none";
             endScreen.style.display = "block";
             clickButton.disabled = true;
             statusText.innerText = "終了！";
             myFinalScoreText.innerText = `あなたの最終スコア: ${myScore} 回`;
+
+            // ✅ ここで保存したデータをリセットします
+            localStorage.removeItem("playerData");
+            console.log("ゲーム終了。保存データをリセットしました。");
         });
+        
+        
+        // --- ✅ ページ読み込み時に自動参加を実行 ---
+        tryAutoJoin();
         
     </script>
 </body>
