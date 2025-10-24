@@ -98,8 +98,13 @@ io.on("connection", (socket) => {
         gameStarted = false;
         console.log("⏹️ Game ended!");
         
-        // ✅ フィルタリングされた最終結果をUnityとWebクライアントに送信
+        // 1. フィルタリングされた最終結果をUnityとWebクライアントに送信
         io.emit("gameEnded", getLeaderboard());
+
+        // 2. ✅ 最終結果を送信した後、プレイヤーデータとカウンターをリセット
+        console.log("--- プレイヤーデータとカウンターをリセットします ---");
+        players = {};
+        playerCounter = 0;
     });
 
     socket.on("disconnect", () => {
