@@ -18,7 +18,7 @@
             width: 90vw;
             height: 60vh;
             margin: 20px auto;
-            background: #0074D9; /* ★★★ ボタンの色も青系に変更 ★★★ */
+            background: #0074D9; 
             color: white;
             border: none;
             border-radius: 20px;
@@ -75,19 +75,18 @@
         let myName = "";
         let myScore = 0;
 
-        // --- ★★★ 修正: 参加ボタンの処理 ★★★ ---
-        // 参加時にサーバーにゲーム状況を問い合わせ、進行中なら即座にゲームを開始します
+       // 参加時
         joinButton.onclick = () => {
-            myName = nameInput.value || "名無し";
-            
-            // emitにコールバックを追加し、サーバーからの即時応答(isGameActive)を受け取る
-            socket.emit("join", myName, (isGameActive) => {
-                // サーバーからの応答を受け取ってから画面を切り替える
+            const enteredName = nameInput.value || "名無し";
+
+         // サーバーに参加要求を出し、displayNameを受け取る
+            socket.emit("join", enteredName, ({ isGameActive, displayName }) => {
+                myName = displayName; // ✅ サーバーが生成した「野田軍〇番隊隊長 名前」を使う
+
                 joinScreen.style.display = "none";
                 gameScreen.style.display = "block";
                 myNameText.innerText = `ようこそ、${myName} さん`;
 
-                // もしサーバー側でゲームが進行中なら、即座にゲームを開始状態にする
                 if (isGameActive) {
                     console.log("ゲームに途中参加します。");
                     statusText.innerText = "START!!";
@@ -98,7 +97,6 @@
             });
         };
 
-        // --- ★★★ 修正: パーティクルの色 ★★★ ---
         function showBurst(e) {
             const touch = e.touches ? e.touches[0] : e;
             if (!touch) return;
@@ -112,7 +110,7 @@
                 gravity: 0.5,
                 scalar: 1.0,
                 decay: 0.92,
-                colors: ['#00BFFF', '#1E90FF', '#ADD8E6', '#FFFFFF'], // 青系の色に変更
+                colors: ['#00BFFF', '#1E90FF', '#ADD8E6', '#FFFFFF'], 
                 shapes: ['circle', 'star'],
                 zIndex: 9999
             });

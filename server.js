@@ -19,6 +19,7 @@ app.get("/", (req, res) => {
 
 let players = {};
 let gameStarted = false;
+let playerCounter = 0; // 🔹 番号用カウンター
 
 function getTotalPower() {
     return Object.values(players).reduce((total, player) => total + player.score, 0);
@@ -30,22 +31,31 @@ function getLeaderboard() {
         .slice(0, 10);
 }
 
-
 io.on("connection", (socket) => {
     console.log("🟢 User connected:", socket.id);
 
-    // --- ★★★ 修正箇所 ★★★ ---
-    // 第2引数にコールバック関数 `callback` を追加
     socket.on("join", (name, callback) => {
-        players[socket.id] = { name: name || "名無し", score: 0 };
-        console.log(`👤 ${players[socket.id].name} joined`);
-        
-        io.emit("updateLeaderboard", getLeaderboard()); 
-        
-        // ★★★ 応答を返す処理を追加 ★★★
-        // 参加してきたクライアントにだけ、現在のゲーム状態(true/false)を返す
+        playerCounter++; // 🔹 接続順に番号を付ける
+        const cleanName = name?.trim() || "名無し";
+        const displayName = `野田軍${playerCounter}番隊隊長 ${cleanName}`; // ✅ 表示名を生成
+
+        players[socket.id] = {
+            name: cleanName,
+            displayName,
+            score: 0,
+            unitNumber: playerCounter
+        };
+
+        console.log(`👤 ${displayName} joined`);
+
+        io.emit("updateLeaderboard", getLeaderboard());
+
         if (callback) {
-            callback(gameStarted);
+            // 🔹 クライアントへ送るデータを変更
+            callback({
+                isGameActive: gameStarted,
+                displayName
+            });
         }
     });
 
@@ -53,8 +63,7 @@ io.on("connection", (socket) => {
         const player = players[socket.id];
         if (gameStarted && player) {
             player.score += count;
-            console.log(`💥 Received power from ${player.name}: ${count} (Total: ${player.score})`);
-            
+            console.log(`💥 ${player.displayName} +${count} → ${player.score}`);
             io.emit("updatePower", getTotalPower());
             io.emit("updateLeaderboard", getLeaderboard());
         }
@@ -65,18 +74,17 @@ io.on("connection", (socket) => {
         Object.values(players).forEach(p => p.score = 0);
         console.log("🏁 Game started!");
         io.emit("gameStarted");
-        io.emit("updateLeaderboard", getLeaderboard());
     });
 
     socket.on("endGame", () => {
         gameStarted = false;
         console.log("⏹️ Game ended!");
-        io.emit("gameEnded", getLeaderboard()); 
+        io.emit("gameEnded", getLeaderboard());
     });
 
     socket.on("disconnect", () => {
         if (players[socket.id]) {
-            console.log(`❌ ${players[socket.id].name} disconnected`);
+            console.log(`❌ ${players[socket.id].displayName} disconnected`);
             delete players[socket.id];
             io.emit("updateLeaderboard", getLeaderboard());
         }
