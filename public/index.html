@@ -32,7 +32,6 @@
         #myFinalScore { font-size: 28px; color: #333; }
         #thanksMessage { font-size: 18px; color: #666; margin-top: 20px; }
         
-        /* --- ✅ 追加したスタイル --- */
         #stageQuestion {
             margin-top: 25px;
             padding: 10px;
@@ -74,12 +73,12 @@
 
         <div id="winnerMessage" style="display: none; padding: 10px 5px; border: 3px solid #d9534f; border-radius: 10px; margin: 25px auto; width: 90%; background: #fdf7f7;">
             <p id="winnerText" style="font-size: 18px; color: #d9534f; font-weight: bold; line-height: 1.5; margin: 0;">
-                </p>
+            </p>
         </div>
 
         <p id="thanksMessage">ご協力ありがとうございました。</p>
         
-        </div>
+    </div>
 
   <script>
         // サーバーに接続
@@ -97,31 +96,21 @@
         const myScoreText = document.getElementById("myScore");
         const myFinalScoreText = document.getElementById("myFinalScore");
         
-        // ✅ 警告メッセージの要素も取得 (もしあれば)
-        // const warningMessage = document.getElementById("warningMessage"); 
-        
         let myName = "";
         let myScore = 0;
 
-        // --- ✅ 自動再接続処理 ---
-        // ページが読み込まれた時に、保存されたデータで自動参加を試みる
+        // --- 自動再接続処理 ---
         function tryAutoJoin() {
             const savedDataString = localStorage.getItem("playerData");
 
-            // 保存されたデータがあるか？
             if (savedDataString) {
                 console.log("保存されたデータを検知。自動再接続します。");
                 const savedData = JSON.parse(savedDataString);
 
-                // 参加画面を非表示にする
                 joinScreen.style.display = "none";
 
-                // 保存されたデータ（名前と壇上設定）でサーバーに接続
-                // (joinButton.onclick とほぼ同じ処理)
                 socket.emit("join", savedData, ({ isGameActive, displayName }) => {
                     myName = displayName; 
-
-                    // ゲーム画面を表示
                     gameScreen.style.display = "block";
                     myNameText.innerText = `ようこそ、${myName} さん`;
 
@@ -132,35 +121,29 @@
                         myScore = 0; 
                         myScoreText.innerText = `あなたのスコア: 0`;
                     }
-                    // (ゲームがまだ始まっていない場合は、'gameStarted' イベントを待つ)
                 });
             }
         }
         
-        // --- ✅ 参加ボタンの処理 (LocalStorageへの保存を追加) ---
+        // --- 参加ボタンの処理 ---
         joinButton.onclick = () => {
-            // 名前のトリムと空欄チェック
             const enteredName = nameInput.value.trim();
             
             if (enteredName === "") {
                 alert("名前を入力してください。");
-                return; // ここで処理を中断
+                return; 
             }
 
-            // 壇上の選択を取得
             const stagePreference = document.querySelector('input[name="stage"]:checked').value;
             const canBeOnStage = (stagePreference === "yes");
 
-            // サーバーに送るデータを作成
             const joinData = {
                 name: enteredName,
                 canBeOnStage: canBeOnStage
             };
             
-            // ✅ データをLocalStorageに保存 (JSON文字列として保存)
             localStorage.setItem("playerData", JSON.stringify(joinData));
 
-            // サーバーに参加要求を出す
             socket.emit("join", joinData, ({ isGameActive, displayName }) => {
                 myName = displayName; 
 
@@ -224,8 +207,8 @@
             myScoreText.innerText = `あなたのスコア: 0`;
         });
 
-        // ゲーム終了
-        socket.on("gameEnded", (finalLeaderboard) => {
+        // ✅ ゲーム終了時の処理を修正
+        socket.on("gameEnded", (gameData) => { // ✅ 引数を (finalLeaderboard) から (gameData) に変更
             gameScreen.style.display = "none";
             endScreen.style.display = "block";
             clickButton.disabled = true;
@@ -233,33 +216,27 @@
             
             myFinalScoreText.innerText = `${myName} さんの最終スコア: ${myScore} 回`;
 
-            // --- ✅ 1位の案内を表示する処理を追加 ---
             const winnerMessageDiv = document.getElementById("winnerMessage");
             const winnerTextP = document.getElementById("winnerText");
 
-            // 1. サーバーから送られたランキングが存在し、1位がいるか？
-            // (finalLeaderboard には「壇上OK」の人しか含まれていません)
+            // ✅ オブジェクト(gameData) から leaderboard を取り出す
+            const finalLeaderboard = gameData.leaderboard; 
+
             if (finalLeaderboard && finalLeaderboard.length > 0) {
                 
-                // 2. 1位の人の名前が、このクライアントの myName と一致するか？
                 if (finalLeaderboard[0].name === myName) {
                     
-                    // 3. 一致した場合、要望通りのメッセージを設定
                     winnerTextP.innerHTML = `${myName} はタップ数が一位でした！<br>案内がありましたら壇上へお上がり下さい。`;
-                    
-                    // 4. メッセージの div を表示
                     winnerMessageDiv.style.display = "block";
                 }
             }
             // --- 処理ここまで ---
 
-
-            // ✅ ここで保存したデータをリセットします
             localStorage.removeItem("playerData");
             console.log("ゲーム終了。保存データをリセットしました。");
         });
         
-        // --- ✅ ページ読み込み時に自動参加を実行 ---
+        // --- ページ読み込み時に自動参加を実行 ---
         tryAutoJoin();
         
     </script>

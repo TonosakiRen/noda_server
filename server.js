@@ -25,14 +25,12 @@ function getTotalPower() {
     return Object.values(players).reduce((total, player) => total + player.score, 0);
 }
 
-// ✅ ランキング取得関数を修正
 function getLeaderboard() {
   return Object.values(players)
-    .filter(player => player.canBeOnStage) // ✅「はい」の人だけをフィルタリング
+    .filter(player => player.canBeOnStage) // 「はい」の人だけをフィルタリング
     .sort((a, b) => b.score - a.score) // スコア順にソート
     .slice(0, 10) // 上位10件に絞る
     .map(player => { 
-      // C#側が受け取る形式にマッピングする
       return {
         name: player.displayName, 
         score: player.score
@@ -43,30 +41,25 @@ function getLeaderboard() {
 io.on("connection", (socket) => {
     console.log("🟢 User connected:", socket.id);
 
-    // ✅ "join" イベントの受信データを変更
-    // (name, callback) から ({ name, canBeOnStage }, callback) に変更
     socket.on("join", ({ name, canBeOnStage }, callback) => {
-        playerCounter++; // 🔹 接続順に番号を付ける
+        playerCounter++;
         const cleanName = name?.trim() || "名無し";
-        const displayName = `野田軍${playerCounter}番隊隊長 ${cleanName}`; // ✅ 表示名を生成
+        const displayName = `野田軍${playerCounter}番隊隊長 ${cleanName}`; 
 
-        // ✅ playerオブジェクトに canBeOnStage を保存
         players[socket.id] = {
             name: cleanName,
             displayName,
             score: 0,
             unitNumber: playerCounter,
-            canBeOnStage: canBeOnStage // 
+            canBeOnStage: canBeOnStage 
         };
 
-        // ✅ ログにも表示
         console.log(`👤 ${displayName} joined (Can be on stage: ${canBeOnStage})`);
 
-        // getLeaderboard() が更新されたので、Unity/Web両方に正しい情報が送られる
-        io.emit("updateLeaderboard", getLeaderboard()); 
+        // ❌ Webクライアント向けのリアルタイムランキング更新も削除
+        // io.emit("updateLeaderboard", getLeaderboard()); 
 
         if (callback) {
-            // 🔹 クライアントへ送るデータを変更
             callback({
                 isGameActive: gameStarted,
                 displayName
@@ -78,11 +71,10 @@ io.on("connection", (socket) => {
         const player = players[socket.id];
         if (gameStarted && player) {
             player.score += count;
-            // console.log(`💥 ${player.displayName} +${count} → ${player.score}`); // ログが多すぎる場合はコメントアウト
-            io.emit("updatePower", getTotalPower());
             
-            // ✅ ランキング対象者（canBeOnStage: true）のみでリーダーボードを更新
-            io.emit("updateLeaderboard", getLeaderboard());
+            // ❌ 以下の2行（ブロードキャスト）を削除
+            // io.emit("updatePower", getTotalPower());
+            // io.emit("updateLeaderboard", getLeaderboard());
         }
     });
 
@@ -91,30 +83,43 @@ io.on("connection", (socket) => {
         Object.values(players).forEach(p => p.score = 0);
         console.log("🏁 Game started!");
         io.emit("gameStarted");
-        io.emit("updateLeaderboard", getLeaderboard()); // 念のためリセット
+        // ❌ スタート時のランキングブロードキャストも削除
+        // io.emit("updateLeaderboard", getLeaderboard()); 
     });
 
     socket.on("endGame", () => {
         gameStarted = false;
         console.log("⏹️ Game ended!");
         
-        // 1. フィルタリングされた最終結果をUnityとWebクライアントに送信
-        io.emit("gameEnded", getLeaderboard());
+        // ✅ 最終結果は全員に送信する (合計クリック数もオブジェクトに含める)
+        io.emit("gameEnded", {
+            leaderboard: getLeaderboard(),
+            totalPower: getTotalPower()
+        });
 
-        // 2. ✅ 最終結果を送信した後、プレイヤーデータとカウンターをリセット
         console.log("--- プレイヤーデータとカウンターをリセットします ---");
         players = {};
         playerCounter = 0;
     });
 
-    // ✅ Unityからの接続数リクエストに応答するリスナー
     socket.on("getConnectionCount", (callback) => {
         const count = Object.keys(players).length;
         console.log(`📡 接続数のリクエスト受信。現在の接続数: ${count}`);
-        
-        // リクエストしてきたクライアント（Unity）にだけコールバックで返信
         if (callback) {
             callback(count);
+        }
+    });
+
+    // ✅ Unityからのリアルタイムデータ（合計とランキング）リクエストに応答する
+    socket.on("getGameData", (callback) => {
+        // 現在の合計クリック数とランキングを計算
+        const data = {
+            totalPower: getTotalPower(),
+            leaderboard: getLeaderboard()
+        };
+        // リクエストしてきたクライアント（Unity）にだけコールバックで返信
+        if (callback) {
+            callback(data);
         }
     });
 
@@ -123,8 +128,8 @@ io.on("connection", (socket) => {
             console.log(`❌ ${players[socket.id].displayName} disconnected`);
             delete players[socket.id];
             
-            // ✅ フィルタリングされたリーダーボードを送信
-            io.emit("updateLeaderboard", getLeaderboard());
+            // ❌ 接続切断時のランキングブロードキャストも削除
+            // io.emit("updateLeaderboard", getLeaderboard());
         }
     });
 });
