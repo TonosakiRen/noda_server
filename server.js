@@ -107,6 +107,17 @@ io.on("connection", (socket) => {
         playerCounter = 0;
     });
 
+    // ✅ Unityからの接続数リクエストに応答するリスナー
+    socket.on("getConnectionCount", (callback) => {
+        const count = Object.keys(players).length;
+        console.log(`📡 接続数のリクエスト受信。現在の接続数: ${count}`);
+        
+        // リクエストしてきたクライアント（Unity）にだけコールバックで返信
+        if (callback) {
+            callback(count);
+        }
+    });
+
     socket.on("disconnect", () => {
         if (players[socket.id]) {
             console.log(`❌ ${players[socket.id].displayName} disconnected`);
