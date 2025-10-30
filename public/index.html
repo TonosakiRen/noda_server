@@ -97,7 +97,9 @@
         const myFinalScoreText = document.getElementById("myFinalScore");
         
         let myName = "";
-        let myScore = 0;
+        let myScore = 0; // ✅ 実際の総クリック数 (UI表示用 & 最終スコア用)
+        let clicksSinceLastSend = 0; // ✅ 最後に送信してからのクリック数 (10回ごとにリセット)
+        const SEND_THRESHOLD = 10; // ✅ 送信するクリック数のしきい値
 
         // --- 自動再接続処理 ---
         function tryAutoJoin() {
@@ -119,6 +121,7 @@
                         statusText.innerText = "START!!";
                         clickButton.disabled = false;
                         myScore = 0; 
+                        clicksSinceLastSend = 0; // ✅ カウンターもリセット
                         myScoreText.innerText = `あなたのスコア: 0`;
                     }
                 });
@@ -156,12 +159,13 @@
                     statusText.innerText = "START!!";
                     clickButton.disabled = false;
                     myScore = 0; 
+                    clicksSinceLastSend = 0; // ✅ カウンターもリセット
                     myScoreText.innerText = `あなたのスコア: 0`;
                 }
             });
         };
 
-        // --- (紙吹雪の showBurst 関数は変更なし) ---
+        // --- 紙吹雪 ---
         function showBurst(e) {
             const touch = e.touches ? e.touches[0] : e;
             if (!touch) return;
@@ -180,57 +184,69 @@
                 zIndex: 9999
             });
         }
+        
+        // --- ✅ クリック/タップ処理を共通化 ---
+        function handleClickOrTap(event) {
+             // ゲームが有効な時だけ処理
+             if(clickButton.disabled) return; 
 
-        // --- (ボタンのイベントリスナーは変更なし) ---
-        clickButton.addEventListener("click", (e) => {
-            myScore++;
-            myScoreText.innerText = `あなたのスコア: ${myScore}`;
-            socket.emit("power", 1);
-            showBurst(e);
-        });
+             myScore++; // 実際のスコアを加算
+             clicksSinceLastSend++; // 送信までのカウンターを加算
+             myScoreText.innerText = `あなたのスコア: ${myScore}`; // UI更新
+             showBurst(event); // 紙吹雪
+
+             // 送信しきい値に達したらサーバーに送信
+             if (clicksSinceLastSend >= SEND_THRESHOLD) {
+                 socket.emit("power", clicksSinceLastSend); // ✅ 溜まった回数を送信
+                 clicksSinceLastSend = 0; // ✅ カウンターをリセット
+             }
+        }
+
+        // --- イベントリスナー ---
+        clickButton.addEventListener("click", handleClickOrTap);
         
         clickButton.addEventListener("touchstart", (e) => {
-            e.preventDefault(); 
-            myScore++;
-            myScoreText.innerText = `あなたのスコア: ${myScore}`;
-            socket.emit("power", 1);
-            showBurst(e);
+            e.preventDefault(); // ダブルタップズームなどを防ぐ
+            handleClickOrTap(e);
         }, { passive: false });
 
 
-        // --- (サーバーからの受信イベントは変更なし) ---
+        // --- サーバーからの受信 ---
         socket.on("gameStarted", () => {
             console.log("サーバーから開始信号を受信しました。");
             statusText.innerText = "START!!";
             clickButton.disabled = false;
             myScore = 0; 
+            clicksSinceLastSend = 0; // ✅ カウンターもリセット
             myScoreText.innerText = `あなたのスコア: 0`;
         });
 
-        // ✅ ゲーム終了時の処理を修正
-        socket.on("gameEnded", (gameData) => { // ✅ 引数を (finalLeaderboard) から (gameData) に変更
+        socket.on("gameEnded", (gameData) => { 
             gameScreen.style.display = "none";
             endScreen.style.display = "block";
             clickButton.disabled = true;
             statusText.innerText = "終了！";
             
+            // ✅ 最終スコアは実際のクリック数 myScore を使う (変更なし)
             myFinalScoreText.innerText = `${myName} さんの最終スコア: ${myScore} 回`;
 
+            // ✅ 念のため、ゲーム終了時に残っているクリックも送信する (任意)
+            if (clicksSinceLastSend > 0) {
+                 socket.emit("power", clicksSinceLastSend);
+                 clicksSinceLastSend = 0; 
+            }
+
+            // --- 1位の案内表示 (変更なし) ---
             const winnerMessageDiv = document.getElementById("winnerMessage");
             const winnerTextP = document.getElementById("winnerText");
-
-            // ✅ オブジェクト(gameData) から leaderboard を取り出す
             const finalLeaderboard = gameData.leaderboard; 
-
             if (finalLeaderboard && finalLeaderboard.length > 0) {
-                
                 if (finalLeaderboard[0].name === myName) {
-                    
                     winnerTextP.innerHTML = `${myName} はタップ数が一位でした！<br>案内がありましたら壇上へお上がり下さい。`;
                     winnerMessageDiv.style.display = "block";
                 }
             }
-            // --- 処理ここまで ---
+            // --- ここまで ---
 
             localStorage.removeItem("playerData");
             console.log("ゲーム終了。保存データをリセットしました。");
