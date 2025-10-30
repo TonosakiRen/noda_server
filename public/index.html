@@ -18,20 +18,30 @@
             width: 90vw;
             height: 60vh;
             margin: 20px auto;
-            background: #0074D9; 
+            background: #0074D9; /* ✅ 通常時の青 */
             color: white;
             border: none;
             border-radius: 20px;
             user-select: none;
             -webkit-user-select: none;
             -webkit-tap-highlight-color: transparent;
+            transition: background-color 0.2s ease;
         }
-        #clickButton:active { background: #0056a2; }
+        #clickButton:active {
+             /* ✅ 有効時のアクティブ色 */
+             background: #0056a2;
+        }
+        #clickButton:disabled {
+             /* ✅ 無効時のスタイル: 赤背景 */
+             background: #d9534f; /* 赤色 */
+             color: white; /* 文字は見えないが念のため白 */
+             cursor: not-allowed;
+        }
         #status { font-size: 24px; font-weight: bold; }
         #myScore { font-size: 20px; color: #555; }
         #myFinalScore { font-size: 28px; color: #333; }
         #thanksMessage { font-size: 18px; color: #666; margin-top: 20px; }
-        
+
         #stageQuestion {
             margin-top: 25px;
             padding: 10px;
@@ -48,14 +58,14 @@
     <div id="joinScreen">
         <h1>元気玉を送ろう！</h1>
         <input type="text" id="nameInput" placeholder="名前を入力" maxlength="18">
-        
+
         <div id="stageQuestion">
             <p>クリック数が上位だった場合、<br>壇上に上がっていただけますか？</p>
             <label><input type="radio" name="stage" value="yes" checked> はい</label>
             <label><input type="radio" name="stage" value="no"> いいえ</label>
             <p style="font-size: 12px; color: #666;">（「いいえ」の場合、ランキングには掲載されません）</p>
         </div>
-        
+
         <br>
         <button id="joinButton">参加する</button>
     </div>
@@ -64,12 +74,12 @@
         <h1 id="status">待機中... (Unityからの開始待ち)</h1>
         <h2 id="myName"></h2>
         <h3 id="myScore">あなたのスコア: 0</h3>
-        <button id="clickButton" disabled>PUSH!</button>
+        <button id="clickButton" disabled></button> <!-- ✅ 初期テキストを削除 -->
     </div>
 
     <div id="endScreen">
         <h1>ゲーム終了！</h1>
-        <h2 id="myFinalScore"></h2> 
+        <h2 id="myFinalScore"></h2>
 
         <div id="winnerMessage" style="display: none; padding: 10px 5px; border: 3px solid #d9534f; border-radius: 10px; margin: 25px auto; width: 90%; background: #fdf7f7;">
             <p id="winnerText" style="font-size: 18px; color: #d9534f; font-weight: bold; line-height: 1.5; margin: 0;">
@@ -77,12 +87,12 @@
         </div>
 
         <p id="thanksMessage">ご協力ありがとうございました。</p>
-        
+
     </div>
 
   <script>
         // サーバーに接続
-        const socket = io(); 
+        const socket = io();
 
         // 要素を取得
         const joinScreen = document.getElementById("joinScreen");
@@ -95,166 +105,159 @@
         const myNameText = document.getElementById("myName");
         const myScoreText = document.getElementById("myScore");
         const myFinalScoreText = document.getElementById("myFinalScore");
-        
+
         let myName = "";
-        let myScore = 0; // ✅ 実際の総クリック数 (UI表示用 & 最終スコア用)
-        let clicksSinceLastSend = 0; // ✅ 最後に送信してからのクリック数 (10回ごとにリセット)
-        const SEND_THRESHOLD = 10; // ✅ 送信するクリック数のしきい値
+        let myScore = 0;
+        let clicksSinceLastSend = 0;
+        const SEND_THRESHOLD = 10;
 
         // --- 自動再接続処理 ---
         function tryAutoJoin() {
             const savedDataString = localStorage.getItem("playerData");
-
             if (savedDataString) {
                 console.log("保存されたデータを検知。自動再接続します。");
                 const savedData = JSON.parse(savedDataString);
-
                 joinScreen.style.display = "none";
 
-                socket.emit("join", savedData, ({ isGameActive, displayName }) => {
-                    myName = displayName; 
+                // ✅ isTappingAllowed を受け取る
+                socket.emit("join", savedData, ({ isGameActive, displayName, isTappingAllowed }) => {
+                    myName = displayName;
                     gameScreen.style.display = "block";
                     myNameText.innerText = `ようこそ、${myName} さん`;
 
                     if (isGameActive) {
                         console.log("ゲームに途中参加します。");
-                        statusText.innerText = "START!!";
-                        clickButton.disabled = false;
-                        myScore = 0; 
-                        clicksSinceLastSend = 0; // ✅ カウンターもリセット
+                        statusText.innerText = isTappingAllowed ? "START!!" : "START!! (タップ待機中)"; // ✅ ステータス反映
+                        clickButton.disabled = !isTappingAllowed; // ✅ 状態反映
+                        clickButton.innerText = isTappingAllowed ? "PUSH!" : ""; // ✅ テキスト反映
+                        myScore = 0;
+                        clicksSinceLastSend = 0;
                         myScoreText.innerText = `あなたのスコア: 0`;
+                    } else {
+                         clickButton.disabled = true; // ✅ ゲーム開始前
+                         clickButton.innerText = "";
+                         statusText.innerText = "待機中... (Unityからの開始待ち)";
                     }
                 });
             }
         }
-        
+
         // --- 参加ボタンの処理 ---
         joinButton.onclick = () => {
             const enteredName = nameInput.value.trim();
-            
             if (enteredName === "") {
-                alert("名前を入力してください。");
-                return; 
+                alert("名前を入力してください。"); return;
             }
-
             const stagePreference = document.querySelector('input[name="stage"]:checked').value;
             const canBeOnStage = (stagePreference === "yes");
-
-            const joinData = {
-                name: enteredName,
-                canBeOnStage: canBeOnStage
-            };
-            
+            const joinData = { name: enteredName, canBeOnStage: canBeOnStage };
             localStorage.setItem("playerData", JSON.stringify(joinData));
 
-            socket.emit("join", joinData, ({ isGameActive, displayName }) => {
-                myName = displayName; 
-
+            // ✅ isTappingAllowed を受け取る
+            socket.emit("join", joinData, ({ isGameActive, displayName, isTappingAllowed }) => {
+                myName = displayName;
                 joinScreen.style.display = "none";
                 gameScreen.style.display = "block";
                 myNameText.innerText = `ようこそ、${myName} さん`;
 
                 if (isGameActive) {
                     console.log("ゲームに途中参加します。");
-                    statusText.innerText = "START!!";
-                    clickButton.disabled = false;
-                    myScore = 0; 
-                    clicksSinceLastSend = 0; // ✅ カウンターもリセット
+                    statusText.innerText = isTappingAllowed ? "START!!" : "START!! (タップ待機中)"; // ✅ ステータス反映
+                    clickButton.disabled = !isTappingAllowed; // ✅ 状態反映
+                    clickButton.innerText = isTappingAllowed ? "PUSH!" : ""; // ✅ テキスト反映
+                    myScore = 0;
+                    clicksSinceLastSend = 0;
                     myScoreText.innerText = `あなたのスコア: 0`;
+                } else {
+                     clickButton.disabled = true; // ✅ ゲーム開始前
+                     clickButton.innerText = "";
+                     statusText.innerText = "待機中... (Unityからの開始待ち)";
                 }
             });
         };
 
         // --- 紙吹雪 ---
-        function showBurst(e) {
+        function showBurst(e) { /* (変更なし) */
             const touch = e.touches ? e.touches[0] : e;
-            if (!touch) return;
-            const x = touch.clientX / window.innerWidth;
-            const y = touch.clientY / window.innerHeight;
+             if (!touch) return;
+             const x = touch.clientX / window.innerWidth;
+             const y = touch.clientY / window.innerHeight;
 
-            confetti({
-                particleCount: 50,
-                spread: 360,
-                origin: { x, y },
-                gravity: 0.5,
-                scalar: 1.0,
-                decay: 0.92,
-                colors: ['#00BFFF', '#1E90FF', '#ADD8E6', '#FFFFFF'], 
-                shapes: ['circle', 'star'],
-                zIndex: 9999
-            });
+             confetti({ particleCount: 50, spread: 360, origin: { x, y }, gravity: 0.5, scalar: 1.0, decay: 0.92, colors: ['#00BFFF', '#1E90FF', '#ADD8E6', '#FFFFFF'], shapes: ['circle', 'star'], zIndex: 9999 });
         }
-        
-        // --- ✅ クリック/タップ処理を共通化 ---
+
+        // --- クリック/タップ処理 ---
         function handleClickOrTap(event) {
-             // ゲームが有効な時だけ処理
-             if(clickButton.disabled) return; 
-
-             myScore++; // 実際のスコアを加算
-             clicksSinceLastSend++; // 送信までのカウンターを加算
-             myScoreText.innerText = `あなたのスコア: ${myScore}`; // UI更新
-             showBurst(event); // 紙吹雪
-
-             // 送信しきい値に達したらサーバーに送信
+             if(clickButton.disabled) return;
+             myScore++;
+             clicksSinceLastSend++;
+             myScoreText.innerText = `あなたのスコア: ${myScore}`;
+             showBurst(event);
              if (clicksSinceLastSend >= SEND_THRESHOLD) {
-                 socket.emit("power", clicksSinceLastSend); // ✅ 溜まった回数を送信
-                 clicksSinceLastSend = 0; // ✅ カウンターをリセット
+                 socket.emit("power", clicksSinceLastSend);
+                 clicksSinceLastSend = 0;
              }
         }
 
         // --- イベントリスナー ---
         clickButton.addEventListener("click", handleClickOrTap);
-        
-        clickButton.addEventListener("touchstart", (e) => {
-            e.preventDefault(); // ダブルタップズームなどを防ぐ
-            handleClickOrTap(e);
-        }, { passive: false });
+        clickButton.addEventListener("touchstart", (e) => { e.preventDefault(); handleClickOrTap(e); }, { passive: false });
 
 
         // --- サーバーからの受信 ---
         socket.on("gameStarted", () => {
             console.log("サーバーから開始信号を受信しました。");
-            statusText.innerText = "START!!";
-            clickButton.disabled = false;
-            myScore = 0; 
-            clicksSinceLastSend = 0; // ✅ カウンターもリセット
+            statusText.innerText = "START!! (タップ待機中)"; // ✅ 初期ステータス
+            clickButton.disabled = true; // ✅ 初期は無効
+            clickButton.innerText = ""; // ✅ 初期テキストなし
+            myScore = 0;
+            clicksSinceLastSend = 0;
             myScoreText.innerText = `あなたのスコア: 0`;
         });
 
-        socket.on("gameEnded", (gameData) => { 
+        // ✅ タップ許可/禁止イベントを受信
+        socket.on("tappingAllowed", () => {
+            console.log("✅ タップ許可を受信");
+            statusText.innerText = "START!!";
+            clickButton.disabled = false;
+            clickButton.innerText = "PUSH!"; // ✅ テキスト設定
+        });
+
+        socket.on("tappingDisallowed", () => {
+             console.log("🚫 タップ禁止を受信");
+             statusText.innerText = "STOP!! (タップ待機中)";
+             clickButton.disabled = true;
+             clickButton.innerText = ""; // ✅ テキスト削除
+        });
+
+        socket.on("gameEnded", (gameData) => {
             gameScreen.style.display = "none";
             endScreen.style.display = "block";
             clickButton.disabled = true;
+            clickButton.innerText = ""; // ✅ 終了時テキスト削除
             statusText.innerText = "終了！";
-            
-            // ✅ 最終スコアは実際のクリック数 myScore を使う (変更なし)
             myFinalScoreText.innerText = `${myName} さんの最終スコア: ${myScore} 回`;
 
-            // ✅ 念のため、ゲーム終了時に残っているクリックも送信する (任意)
-            if (clicksSinceLastSend > 0) {
-                 socket.emit("power", clicksSinceLastSend);
-                 clicksSinceLastSend = 0; 
-            }
-
-            // --- 1位の案内表示 (変更なし) ---
+            // 残クリック送信
+            if (clicksSinceLastSend > 0) { socket.emit("power", clicksSinceLastSend); clicksSinceLastSend = 0; }
+            // 1位案内表示
             const winnerMessageDiv = document.getElementById("winnerMessage");
             const winnerTextP = document.getElementById("winnerText");
-            const finalLeaderboard = gameData.leaderboard; 
+            const finalLeaderboard = gameData.leaderboard;
+            winnerMessageDiv.style.display = "none"; // デフォルト非表示
             if (finalLeaderboard && finalLeaderboard.length > 0) {
                 if (finalLeaderboard[0].name === myName) {
                     winnerTextP.innerHTML = `${myName} はタップ数が一位でした！<br>案内がありましたら壇上へお上がり下さい。`;
                     winnerMessageDiv.style.display = "block";
                 }
             }
-            // --- ここまで ---
-
             localStorage.removeItem("playerData");
             console.log("ゲーム終了。保存データをリセットしました。");
         });
-        
-        // --- ページ読み込み時に自動参加を実行 ---
+
+        // --- ページ読み込み ---
         tryAutoJoin();
-        
+
     </script>
 </body>
 </html>

@@ -19,7 +19,8 @@ app.get("/", (req, res) => {
 
 let players = {};
 let gameStarted = false;
-let playerCounter = 0; // 🔹 番号用カウンター
+let playerCounter = 0; 
+let isTappingAllowed = false; // ✅ タップ許可状態 (最初は false)
 
 function getTotalPower() {
     return Object.values(players).reduce((total, player) => total + player.score, 0);
@@ -27,9 +28,9 @@ function getTotalPower() {
 
 function getLeaderboard() {
   return Object.values(players)
-    .filter(player => player.canBeOnStage) // 「はい」の人だけをフィルタリング
-    .sort((a, b) => b.score - a.score) // スコア順にソート
-    .slice(0, 10) // 上位10件に絞る
+    .filter(player => player.canBeOnStage) 
+    .sort((a, b) => b.score - a.score) 
+    .slice(0, 10) 
     .map(player => { 
       return {
         name: player.displayName, 
@@ -56,46 +57,45 @@ io.on("connection", (socket) => {
 
         console.log(`👤 ${displayName} joined (Can be on stage: ${canBeOnStage})`);
 
-        // ❌ Webクライアント向けのリアルタイムランキング更新も削除
-        // io.emit("updateLeaderboard", getLeaderboard()); 
-
         if (callback) {
             callback({
                 isGameActive: gameStarted,
-                displayName
+                displayName,
+                isTappingAllowed: isTappingAllowed // ✅ 現在のタップ許可状態も返す
             });
         }
     });
 
     socket.on("power", (count) => {
         const player = players[socket.id];
-        if (gameStarted && player) {
+        // ✅ gameStarted に加えて isTappingAllowed もチェック
+        if (gameStarted && isTappingAllowed && player) { 
             player.score += count;
-            
-            // ❌ 以下の2行（ブロードキャスト）を削除
-            // io.emit("updatePower", getTotalPower());
-            // io.emit("updateLeaderboard", getLeaderboard());
+        } else {
+             // ✅ タップ無効期間中のクリックだった場合 (ログ出力など任意)
+             // console.log(`⚠️ ${player.displayName} clicked during disallowed period.`);
         }
     });
 
     socket.on("startGame", () => {
         gameStarted = true;
+        isTappingAllowed = false; // ✅ ゲーム開始時は必ずタップ禁止から
         Object.values(players).forEach(p => p.score = 0);
-        console.log("🏁 Game started!");
+        console.log("🏁 Game started! (Tapping initially disallowed)");
         io.emit("gameStarted");
-        // ❌ スタート時のランキングブロードキャストも削除
-        // io.emit("updateLeaderboard", getLeaderboard()); 
+        // io.emit("tappingDisallowed"); // 必要ならWebクライアントに通知
     });
 
     socket.on("endGame", () => {
         gameStarted = false;
-        console.log("⏹️ Game ended!");
+        isTappingAllowed = false; // ✅ ゲーム終了時もタップ禁止に
+        console.log("⏹️ Game ended! (Tapping disallowed)");
         
-        // ✅ 最終結果は全員に送信する (合計クリック数もオブジェクトに含める)
         io.emit("gameEnded", {
             leaderboard: getLeaderboard(),
             totalPower: getTotalPower()
         });
+        // io.emit("tappingDisallowed"); // 必要ならWebクライアントに通知
 
         console.log("--- プレイヤーデータとカウンターをリセットします ---");
         players = {};
@@ -110,26 +110,37 @@ io.on("connection", (socket) => {
         }
     });
 
-    // ✅ Unityからのリアルタイムデータ（合計とランキング）リクエストに応答する
     socket.on("getGameData", (callback) => {
-        // 現在の合計クリック数とランキングを計算
         const data = {
             totalPower: getTotalPower(),
             leaderboard: getLeaderboard()
         };
-        // リクエストしてきたクライアント（Unity）にだけコールバックで返信
         if (callback) {
             callback(data);
         }
     });
 
+    // --- ✅ Unityからのタップ制御 ---
+    socket.on("allowTapping", () => {
+        if(gameStarted) { // ゲーム中のみ許可
+            isTappingAllowed = true;
+            console.log("✅ Tapping allowed by Unity.");
+            io.emit("tappingAllowed"); // ✅ Webクライアントに通知
+        }
+    });
+
+    socket.on("disallowTapping", () => {
+        // ゲーム中かどうかに関わらず禁止はできるようにする
+        isTappingAllowed = false;
+        console.log("🚫 Tapping disallowed by Unity.");
+        io.emit("tappingDisallowed"); // ✅ Webクライアントに通知
+    });
+    // --- ここまで ---
+
     socket.on("disconnect", () => {
         if (players[socket.id]) {
             console.log(`❌ ${players[socket.id].displayName} disconnected`);
             delete players[socket.id];
-            
-            // ❌ 接続切断時のランキングブロードキャストも削除
-            // io.emit("updateLeaderboard", getLeaderboard());
         }
     });
 });
