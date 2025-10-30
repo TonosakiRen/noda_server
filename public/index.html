@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>元気玉を送ろう！</title>
+    <title>死んだ野田クリとしんやを生き返らせよう！</title>
     <script src="/socket.io/socket.io.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
     <style>
@@ -56,7 +56,7 @@
 <body>
 
     <div id="joinScreen">
-        <h1>元気玉を送ろう！</h1>
+        <h1>死んだ野田クリとしんやを生き返らせよう！</h1>
         <input type="text" id="nameInput" placeholder="名前を入力" maxlength="18">
 
         <div id="stageQuestion">
@@ -71,7 +71,7 @@
     </div>
 
     <div id="gameScreen">
-        <h1 id="status">待機中... (Unityからの開始待ち)</h1>
+        <h1 id="status">ボス戦が始まるのを待機しています...</h1>
         <h2 id="myName"></h2>
         <h3 id="myScore">あなたのスコア: 0</h3>
         <button id="clickButton" disabled></button> <!-- ✅ 初期テキストを削除 -->
@@ -127,16 +127,16 @@
 
                     if (isGameActive) {
                         console.log("ゲームに途中参加します。");
-                        statusText.innerText = isTappingAllowed ? "START!!" : "START!! (タップ待機中)"; // ✅ ステータス反映
+                        statusText.innerText = isTappingAllowed ? "生き返らせて!!" : "タップ待機中"; // ✅ ステータス反映
                         clickButton.disabled = !isTappingAllowed; // ✅ 状態反映
-                        clickButton.innerText = isTappingAllowed ? "PUSH!" : ""; // ✅ テキスト反映
+                        clickButton.innerText = isTappingAllowed ? "PUSH!" : "死んだらボタンをタップ！"; // ✅ テキスト反映
                         myScore = 0;
                         clicksSinceLastSend = 0;
                         myScoreText.innerText = `あなたのスコア: 0`;
                     } else {
                          clickButton.disabled = true; // ✅ ゲーム開始前
                          clickButton.innerText = "";
-                         statusText.innerText = "待機中... (Unityからの開始待ち)";
+                         statusText.innerText = "ボス戦が始まるのを待機しています...";
                     }
                 });
             }
@@ -162,16 +162,16 @@
 
                 if (isGameActive) {
                     console.log("ゲームに途中参加します。");
-                    statusText.innerText = isTappingAllowed ? "START!!" : "START!! (タップ待機中)"; // ✅ ステータス反映
+                    statusText.innerText = isTappingAllowed ? "生き返らせて!!" : "タップ待機中"; // ✅ ステータス反映
                     clickButton.disabled = !isTappingAllowed; // ✅ 状態反映
-                    clickButton.innerText = isTappingAllowed ? "PUSH!" : ""; // ✅ テキスト反映
+                    clickButton.innerText = isTappingAllowed ? "PUSH!" : "死んだらボタンをタップ！"; // ✅ テキスト反映
                     myScore = 0;
                     clicksSinceLastSend = 0;
                     myScoreText.innerText = `あなたのスコア: 0`;
                 } else {
                      clickButton.disabled = true; // ✅ ゲーム開始前
                      clickButton.innerText = "";
-                     statusText.innerText = "待機中... (Unityからの開始待ち)";
+                     statusText.innerText = "ボス戦が始まるのを待機しています...";
                 }
             });
         };
