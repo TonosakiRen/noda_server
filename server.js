@@ -19,7 +19,7 @@ app.get("/", (req, res) => {
 
 let players = {};
 let gameStarted = false;
-let playerCounter = 0; 
+let playerCounter = 0;
 let isTappingAllowed = false; // ✅ タップ許可状態 (最初は false)
 
 function getTotalPower() {
@@ -28,12 +28,12 @@ function getTotalPower() {
 
 function getLeaderboard() {
   return Object.values(players)
-    .filter(player => player.canBeOnStage) 
-    .sort((a, b) => b.score - a.score) 
-    .slice(0, 10) 
-    .map(player => { 
+    .filter(player => player.canBeOnStage)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 10)
+    .map(player => {
       return {
-        name: player.displayName, 
+        name: player.displayName,
         score: player.score
       };
     });
@@ -45,14 +45,14 @@ io.on("connection", (socket) => {
     socket.on("join", ({ name, canBeOnStage }, callback) => {
         playerCounter++;
         const cleanName = name?.trim() || "名無し";
-        const displayName = `野田軍${playerCounter}番隊隊長 ${cleanName}`; 
+        const displayName = `野田軍${playerCounter}番隊隊長 ${cleanName}`;
 
         players[socket.id] = {
             name: cleanName,
             displayName,
             score: 0,
             unitNumber: playerCounter,
-            canBeOnStage: canBeOnStage 
+            canBeOnStage: canBeOnStage
         };
 
         console.log(`👤 ${displayName} joined (Can be on stage: ${canBeOnStage})`);
@@ -61,19 +61,22 @@ io.on("connection", (socket) => {
             callback({
                 isGameActive: gameStarted,
                 displayName,
-                isTappingAllowed: isTappingAllowed // ✅ 現在のタップ許可状態も返す
+                isTappingAllowed: isTappingAllowed // ✅ 現在の状態を返す
             });
+            // ✅ ログ追加
+            console.log(`[Join Callback] Sent current state: isGameActive=${gameStarted}, isTappingAllowed=${isTappingAllowed}`);
         }
     });
 
     socket.on("power", (count) => {
         const player = players[socket.id];
-        // ✅ gameStarted に加えて isTappingAllowed もチェック
-        if (gameStarted && isTappingAllowed && player) { 
+         // ✅ ログ追加
+        console.log(`[Power Received] gameStarted=${gameStarted}, isTappingAllowed=${isTappingAllowed}`);
+        if (gameStarted && isTappingAllowed && player) {
             player.score += count;
+            console.log(`[Power Accepted] ${player.displayName} added ${count}. New score: ${player.score}`);
         } else {
-             // ✅ タップ無効期間中のクリックだった場合 (ログ出力など任意)
-             // console.log(`⚠️ ${player.displayName} clicked during disallowed period.`);
+             console.log(`[Power Rejected] Click from ${player?.displayName} ignored.`);
         }
     });
 
@@ -81,21 +84,23 @@ io.on("connection", (socket) => {
         gameStarted = true;
         isTappingAllowed = false; // ✅ ゲーム開始時は必ずタップ禁止から
         Object.values(players).forEach(p => p.score = 0);
-        console.log("🏁 Game started! (Tapping initially disallowed)");
+        // ✅ ログ追加
+        console.log("🏁 Game started! Setting isTappingAllowed = false");
         io.emit("gameStarted");
-        // io.emit("tappingDisallowed"); // 必要ならWebクライアントに通知
+        io.emit("tappingDisallowed"); // ✅ 開始時は禁止状態を通知
     });
 
     socket.on("endGame", () => {
         gameStarted = false;
         isTappingAllowed = false; // ✅ ゲーム終了時もタップ禁止に
-        console.log("⏹️ Game ended! (Tapping disallowed)");
-        
+        // ✅ ログ追加
+        console.log("⏹️ Game ended! Setting isTappingAllowed = false");
+
         io.emit("gameEnded", {
             leaderboard: getLeaderboard(),
             totalPower: getTotalPower()
         });
-        // io.emit("tappingDisallowed"); // 必要ならWebクライアントに通知
+        io.emit("tappingDisallowed"); // ✅ 終了時も禁止状態を通知
 
         console.log("--- プレイヤーデータとカウンターをリセットします ---");
         players = {};
@@ -122,17 +127,22 @@ io.on("connection", (socket) => {
 
     // --- ✅ Unityからのタップ制御 ---
     socket.on("allowTapping", () => {
+        // ✅ ログ追加
+        console.log("[allowTapping Received]");
         if(gameStarted) { // ゲーム中のみ許可
             isTappingAllowed = true;
-            console.log("✅ Tapping allowed by Unity.");
+            console.log("✅ Tapping allowed by Unity. Setting isTappingAllowed = true");
             io.emit("tappingAllowed"); // ✅ Webクライアントに通知
+        } else {
+            console.log("⚠️ allowTapping received but game not started. Ignored.");
         }
     });
 
     socket.on("disallowTapping", () => {
-        // ゲーム中かどうかに関わらず禁止はできるようにする
-        isTappingAllowed = false;
-        console.log("🚫 Tapping disallowed by Unity.");
+        // ✅ ログ追加
+        console.log("[disallowTapping Received]");
+        isTappingAllowed = false; // ゲーム中かどうかに関わらず禁止はできるようにする
+        console.log("🚫 Tapping disallowed by Unity. Setting isTappingAllowed = false");
         io.emit("tappingDisallowed"); // ✅ Webクライアントに通知
     });
     // --- ここまで ---
