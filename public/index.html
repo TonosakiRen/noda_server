@@ -31,7 +31,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            line-height: 1.3; /* 行間 */
+            line-height: 1.3; /* ✅ 行間 (ここに移動) */
             padding: 10px; 
             box-sizing: border-box; /* パディングを含めてサイズ計算 */
         }
@@ -44,8 +44,8 @@
              background: #d9534f; /* 赤色 */
              color: white; 
              cursor: not-allowed;
-             /* ✅ フォントサイズを調整 */
-             font-size: 32px; 
+             /* ✅ font-size 調整を削除 (40pxを継承) */
+             /* font-size: 32px; */ 
         }
         #status { font-size: 24px; font-weight: bold; }
         #myScore { font-size: 20px; color: #555; }
@@ -146,13 +146,13 @@
                         console.log("ゲームに途中参加します。");
                         statusText.innerText = isTappingAllowed ? MSG_TAP_ALLOWED : MSG_STANDBY;
                         clickButton.disabled = !isTappingAllowed;
-                        clickButton.innerHTML = isTappingAllowed ? MSG_BUTTON_TAP : MSG_BUTTON_WAIT_HTML; // ✅ .innerHTML
+                        clickButton.innerHTML = isTappingAllowed ? MSG_BUTTON_TAP : MSG_BUTTON_WAIT_HTML; // .innerHTML
                         myScore = 0;
                         clicksSinceLastSend = 0;
                         myScoreText.innerText = `あなたのスコア: 0`;
                     } else {
-                         clickButton.disabled = true;
-                         clickButton.innerHTML = ""; // ✅ .innerHTML
+                         clickButton.disabled = true; 
+                         clickButton.innerHTML = MSG_BUTTON_WAIT_HTML; // ✅ 修正
                          statusText.innerText = MSG_WAITING;
                     }
                 });
@@ -180,13 +180,13 @@
                     console.log("ゲームに途中参加します。");
                     statusText.innerText = isTappingAllowed ? MSG_TAP_ALLOWED : MSG_STANDBY;
                     clickButton.disabled = !isTappingAllowed;
-                    clickButton.innerHTML = isTappingAllowed ? MSG_BUTTON_TAP : MSG_BUTTON_WAIT_HTML; // ✅ .innerHTML
+                    clickButton.innerHTML = isTappingAllowed ? MSG_BUTTON_TAP : MSG_BUTTON_WAIT_HTML; // .innerHTML
                     myScore = 0;
                     clicksSinceLastSend = 0;
                     myScoreText.innerText = `あなたのスコア: 0`;
                 } else {
-                     clickButton.disabled = true;
-                     clickButton.innerHTML = ""; // ✅ .innerHTML
+                     clickButton.disabled = true; 
+                     clickButton.innerHTML = MSG_BUTTON_WAIT_HTML; // ✅ 修正
                      statusText.innerText = MSG_WAITING;
                 }
             });
@@ -224,7 +224,7 @@
             console.log("サーバーから開始信号を受信しました。");
             statusText.innerText = MSG_STANDBY; 
             clickButton.disabled = true;
-            clickButton.innerHTML = MSG_BUTTON_WAIT_HTML; // ✅ .innerHTML
+            clickButton.innerHTML = MSG_BUTTON_WAIT_HTML; // .innerHTML
             myScore = 0;
             clicksSinceLastSend = 0;
             myScoreText.innerText = `あなたのスコア: 0`;
@@ -234,21 +234,21 @@
             console.log("✅ タップ許可を受信");
             statusText.innerText = MSG_TAP_ALLOWED; 
             clickButton.disabled = false;
-            clickButton.innerHTML = MSG_BUTTON_TAP; // ✅ .innerHTML
+            clickButton.innerHTML = MSG_BUTTON_TAP; // .innerHTML
         });
 
         socket.on("tappingDisallowed", () => {
              console.log("🚫 タップ禁止を受信");
              statusText.innerText = MSG_STANDBY; 
              clickButton.disabled = true;
-             clickButton.innerHTML = MSG_BUTTON_WAIT_HTML; // ✅ .innerHTML
+             clickButton.innerHTML = MSG_BUTTON_WAIT_HTML; // .innerHTML
         });
 
         socket.on("gameEnded", (gameData) => {
             gameScreen.style.display = "none";
             endScreen.style.display = "block";
             clickButton.disabled = true;
-            clickButton.innerHTML = ""; // ✅ .innerHTML
+            clickButton.innerHTML = ""; // .innerHTML
             statusText.innerText = "終了！";
             myFinalScoreText.innerText = `${myName} さんの最終スコア: ${myScore} 回`;
 
@@ -274,3 +274,4 @@
     </script>
 </body>
 </html>
+
