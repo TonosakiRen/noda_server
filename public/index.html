@@ -34,8 +34,11 @@
         #clickButton:disabled {
              /* ✅ 無効時のスタイル: 赤背景 */
              background: #d9534f; /* 赤色 */
-             color: white; /* 文字は見えないが念のため白 */
+             color: white; 
              cursor: not-allowed;
+             /* ✅ テキストが長いためフォントサイズを調整 */
+             font-size: 28px; 
+             padding: 10px;
         }
         #status { font-size: 24px; font-weight: bold; }
         #myScore { font-size: 20px; color: #555; }
@@ -74,7 +77,7 @@
         <h1 id="status">ボス戦が始まるのを待機しています...</h1>
         <h2 id="myName"></h2>
         <h3 id="myScore">あなたのスコア: 0</h3>
-        <button id="clickButton" disabled></button> <!-- ✅ 初期テキストを削除 -->
+        <button id="clickButton" disabled></button> <!-- 初期テキストなし -->
     </div>
 
     <div id="endScreen">
@@ -110,6 +113,13 @@
         let myScore = 0;
         let clicksSinceLastSend = 0;
         const SEND_THRESHOLD = 10;
+        
+        // ✅ 定数として定義
+        const MSG_WAITING = "ボス戦が始まるのを待機しています...";
+        const MSG_STANDBY = "タップ待機中";
+        const MSG_TAP_ALLOWED = "生き返らせて!!";
+        const MSG_BUTTON_TAP = "PUSH!";
+        const MSG_BUTTON_WAIT = "死んだらボタンをタップ！";
 
         // --- 自動再接続処理 ---
         function tryAutoJoin() {
@@ -119,7 +129,6 @@
                 const savedData = JSON.parse(savedDataString);
                 joinScreen.style.display = "none";
 
-                // ✅ isTappingAllowed を受け取る
                 socket.emit("join", savedData, ({ isGameActive, displayName, isTappingAllowed }) => {
                     myName = displayName;
                     gameScreen.style.display = "block";
@@ -127,16 +136,16 @@
 
                     if (isGameActive) {
                         console.log("ゲームに途中参加します。");
-                        statusText.innerText = isTappingAllowed ? "生き返らせて!!" : "タップ待機中"; // ✅ ステータス反映
-                        clickButton.disabled = !isTappingAllowed; // ✅ 状態反映
-                        clickButton.innerText = isTappingAllowed ? "PUSH!" : "死んだらボタンをタップ！"; // ✅ テキスト反映
+                        statusText.innerText = isTappingAllowed ? MSG_TAP_ALLOWED : MSG_STANDBY;
+                        clickButton.disabled = !isTappingAllowed;
+                        clickButton.innerText = isTappingAllowed ? MSG_BUTTON_TAP : MSG_BUTTON_WAIT; // ✅ 修正
                         myScore = 0;
                         clicksSinceLastSend = 0;
                         myScoreText.innerText = `あなたのスコア: 0`;
                     } else {
-                         clickButton.disabled = true; // ✅ ゲーム開始前
+                         clickButton.disabled = true;
                          clickButton.innerText = "";
-                         statusText.innerText = "ボス戦が始まるのを待機しています...";
+                         statusText.innerText = MSG_WAITING;
                     }
                 });
             }
@@ -153,7 +162,6 @@
             const joinData = { name: enteredName, canBeOnStage: canBeOnStage };
             localStorage.setItem("playerData", JSON.stringify(joinData));
 
-            // ✅ isTappingAllowed を受け取る
             socket.emit("join", joinData, ({ isGameActive, displayName, isTappingAllowed }) => {
                 myName = displayName;
                 joinScreen.style.display = "none";
@@ -162,27 +170,26 @@
 
                 if (isGameActive) {
                     console.log("ゲームに途中参加します。");
-                    statusText.innerText = isTappingAllowed ? "生き返らせて!!" : "タップ待機中"; // ✅ ステータス反映
-                    clickButton.disabled = !isTappingAllowed; // ✅ 状態反映
-                    clickButton.innerText = isTappingAllowed ? "PUSH!" : "死んだらボタンをタップ！"; // ✅ テキスト反映
+                    statusText.innerText = isTappingAllowed ? MSG_TAP_ALLOWED : MSG_STANDBY;
+                    clickButton.disabled = !isTappingAllowed;
+                    clickButton.innerText = isTappingAllowed ? MSG_BUTTON_TAP : MSG_BUTTON_WAIT; // ✅ 修正
                     myScore = 0;
                     clicksSinceLastSend = 0;
                     myScoreText.innerText = `あなたのスコア: 0`;
                 } else {
-                     clickButton.disabled = true; // ✅ ゲーム開始前
+                     clickButton.disabled = true;
                      clickButton.innerText = "";
-                     statusText.innerText = "ボス戦が始まるのを待機しています...";
+                     statusText.innerText = MSG_WAITING;
                 }
             });
         };
 
         // --- 紙吹雪 ---
-        function showBurst(e) { /* (変更なし) */
+        function showBurst(e) {
             const touch = e.touches ? e.touches[0] : e;
              if (!touch) return;
              const x = touch.clientX / window.innerWidth;
              const y = touch.clientY / window.innerHeight;
-
              confetti({ particleCount: 50, spread: 360, origin: { x, y }, gravity: 0.5, scalar: 1.0, decay: 0.92, colors: ['#00BFFF', '#1E90FF', '#ADD8E6', '#FFFFFF'], shapes: ['circle', 'star'], zIndex: 9999 });
         }
 
@@ -207,44 +214,42 @@
         // --- サーバーからの受信 ---
         socket.on("gameStarted", () => {
             console.log("サーバーから開始信号を受信しました。");
-            statusText.innerText = "START!! (タップ待機中)"; // ✅ 初期ステータス
-            clickButton.disabled = true; // ✅ 初期は無効
-            clickButton.innerText = ""; // ✅ 初期テキストなし
+            statusText.innerText = MSG_STANDBY; // ✅
+            clickButton.disabled = true;
+            clickButton.innerText = MSG_BUTTON_WAIT; // ✅ 修正
             myScore = 0;
             clicksSinceLastSend = 0;
             myScoreText.innerText = `あなたのスコア: 0`;
         });
 
-        // ✅ タップ許可/禁止イベントを受信
         socket.on("tappingAllowed", () => {
             console.log("✅ タップ許可を受信");
-            statusText.innerText = "START!!";
+            statusText.innerText = MSG_TAP_ALLOWED; // ✅
             clickButton.disabled = false;
-            clickButton.innerText = "PUSH!"; // ✅ テキスト設定
+            clickButton.innerText = MSG_BUTTON_TAP; // ✅
         });
 
         socket.on("tappingDisallowed", () => {
              console.log("🚫 タップ禁止を受信");
-             statusText.innerText = "STOP!! (タップ待機中)";
+             statusText.innerText = MSG_STANDBY; // ✅
              clickButton.disabled = true;
-             clickButton.innerText = ""; // ✅ テキスト削除
+             clickButton.innerText = MSG_BUTTON_WAIT; // ✅ 修正
         });
 
         socket.on("gameEnded", (gameData) => {
             gameScreen.style.display = "none";
             endScreen.style.display = "block";
             clickButton.disabled = true;
-            clickButton.innerText = ""; // ✅ 終了時テキスト削除
+            clickButton.innerText = ""; 
             statusText.innerText = "終了！";
             myFinalScoreText.innerText = `${myName} さんの最終スコア: ${myScore} 回`;
 
-            // 残クリック送信
             if (clicksSinceLastSend > 0) { socket.emit("power", clicksSinceLastSend); clicksSinceLastSend = 0; }
-            // 1位案内表示
+            
             const winnerMessageDiv = document.getElementById("winnerMessage");
             const winnerTextP = document.getElementById("winnerText");
             const finalLeaderboard = gameData.leaderboard;
-            winnerMessageDiv.style.display = "none"; // デフォルト非表示
+            winnerMessageDiv.style.display = "none";
             if (finalLeaderboard && finalLeaderboard.length > 0) {
                 if (finalLeaderboard[0].name === myName) {
                     winnerTextP.innerHTML = `${myName} はタップ数が一位でした！<br>案内がありましたら壇上へお上がり下さい。`;
