@@ -70,7 +70,7 @@
         <input type="text" id="nameInput" placeholder="名前を入力" maxlength="18">
 
         <div id="stageQuestion">
-            <p>クリック数が上位だった場合、<br>壇上に上がっていただけますか？</p>
+            <p>クリック数が上位だった場合、<br>お声がけする場合がございます。よろしいでしょうか？</p>
             <label><input type="radio" name="stage" value="yes" checked> はい</label>
             <label><input type="radio" name="stage" value="no"> いいえ</label>
             <p style="font-size: 12px; color: #666;">（「いいえ」の場合、ランキングには掲載されません）</p>
@@ -260,7 +260,7 @@
             winnerMessageDiv.style.display = "none";
             if (finalLeaderboard && finalLeaderboard.length > 0) {
                 if (finalLeaderboard[0].name === myName) {
-                    winnerTextP.innerHTML = `${myName} はタップ数が一位でした！<br>案内がありましたら壇上へお上がり下さい。`;
+                    winnerTextP.innerHTML = `${myName} はタップ数が一位でした！<br>案内がありましたら手をお上げください。`;
                     winnerMessageDiv.style.display = "block";
                 }
             }
